@@ -51,7 +51,10 @@ built-in Pikachu.
   gray automatically.
 - Frames taller than 20 pixels are shrunk (outlines are kept where they cover enough of a pixel),
   but art drawn at the target size always looks best.
-- Each file can be up to 4 MB.
+- **Keep it small.** Width × height × frames must stay under 25 million pixels (e.g. 1000×1000 with
+  25 frames). Bigger GIFs are rejected with a message and the built-in pet stays. Only about 20 pixels of
+  height are ever drawn, so 250 pixels tall or less loads fastest and looks the same.
+- `walk.gif` plays at the GIF's own frame timing.
 
 ## Commands
 

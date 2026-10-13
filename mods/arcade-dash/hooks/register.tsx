@@ -13,8 +13,8 @@ import {
   toolArg,
   toolTag,
 } from './arcade'
-import { DEFAULT_PET, petFrame, petSizes, setPet } from './pet'
-import { base64ToBytes, gifsToPet } from './petloader'
+import { DEFAULT_PET, STEP_MS, petFrame, petSizes, setPet } from './pet'
+import { base64ToBytes, gifToSprite } from './petloader'
 
 const score = atom({ plugin: 'arcade-dash', key: 'score' } as const, null)
 const git = atom({ plugin: 'arcade-dash', key: 'git' } as const, null)
@@ -23,7 +23,9 @@ const isAwake = atom({ plugin: 'arcade-dash', key: 'isAwake' } as const, false)
 
 const PET_PANE = 'arcade-pet'
 const PET_TITLE = 'PLAYER 1'
-const PET_TICK_MS = 150
+// The timer runs faster than an animation step so a GIF's own frame delays show; a redraw only goes out
+// when the picture changed.
+const PET_TICK_MS = 50
 const PET_MAX_COLUMNS = 200
 
 // Successful results of these tools are folded into their one-line row.
@@ -102,7 +104,16 @@ async function loadCustomPet($: EngineInterface): Promise<string> {
       $.fs.read(walkPath, { as: 'bytes' }),
       $.fs.read(restPath, { as: 'bytes' }),
     ])
-    const pet = gifsToPet(base64ToBytes(walk.base64), base64ToBytes(rest.base64))
+    // One file at a time, handing control back in between, so each gets the worker's full heartbeat window.
+    const sprite = async (name: string, base64: string) => {
+      await $.clock.now()
+      try {
+        return gifToSprite(base64ToBytes(base64))
+      } catch (error) {
+        throw new Error(`${name}: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+    const pet = { walk: await sprite('walk.gif', walk.base64), lie: await sprite('rest.gif', rest.base64) }
     setPet(pet)
     const size = (frames: string[][]) => `${frames[0]![0]!.length}x${frames[0]!.length}`
     return `Loaded your pet from ${complete.folder.label}: walking ${pet.walk.frames.length} frame(s) at ${size(pet.walk.frames)}, resting ${size(pet.lie.frames)}.`
@@ -125,8 +136,12 @@ export const register: Register = on => {
   let turnStartedAt = 0
   let clearedThisTurn = false
   // The pet's animation reads these between redraws; the drawn width comes from the last Pane render.
+  let petMs = 0
   let petTick = 0
   let petAwake = false
+  // The cells last sent to each raster, so an unchanged frame is not redrawn.
+  let paneCells = ''
+  let bandCells = ''
   let petColumns = 0
   // An automatic open only stays when it docks beside the transcript; /pet keeps it anywhere.
   let petAskedFor = false
@@ -144,14 +159,22 @@ export const register: Register = on => {
       argumentHint: '[reload]',
     })
     $.clock.every(PET_TICK_MS, () => {
-      petTick += 1
+      petMs += PET_TICK_MS
+      petTick = Math.floor(petMs / STEP_MS)
       if (petColumns > 0) {
-        void $.ui.blit({ requestId: PET_PANE, key: 'pet', ...petFrame(petTick, petAwake, petColumns) }).catch(() => {})
+        const frame = petFrame(petTick, petAwake, petColumns, undefined, true, false, petMs)
+        if (frame.cells !== paneCells) {
+          paneCells = frame.cells
+          void $.ui.blit({ requestId: PET_PANE, key: 'pet', ...frame }).catch(() => {})
+        }
       }
       if (bandRequestId !== null) {
         const { bandColumns, bandRows } = petSizes()
-        const frame = petFrame(petTick, petAwake, bandColumns, bandRows, false, true)
-        void $.ui.blit({ requestId: bandRequestId, key: 'band-pet', ...frame }).catch(() => {})
+        const frame = petFrame(petTick, petAwake, bandColumns, bandRows, false, true, petMs)
+        if (frame.cells !== bandCells) {
+          bandCells = frame.cells
+          void $.ui.blit({ requestId: bandRequestId, key: 'band-pet', ...frame }).catch(() => {})
+        }
       }
     })
     return next(e)
@@ -188,7 +211,8 @@ export const register: Register = on => {
       return <Text color={COLORS.dim}>{label}</Text>
     }
     petColumns = Math.max(1, Math.min(e.props.bodyColumns, PET_MAX_COLUMNS))
-    const frame = petFrame(petTick, awake, petColumns)
+    const frame = petFrame(petTick, awake, petColumns, undefined, true, false, petMs)
+    paneCells = frame.cells
 
     return (
       <Box flexDirection="column">
@@ -288,7 +312,8 @@ export const register: Register = on => {
     }
     const { Raster } = $.ui.resolve(e)
     bandRequestId = e.requestId
-    const frame = petFrame(petTick, awake, bandColumns, bandRows, false, true)
+    const frame = petFrame(petTick, awake, bandColumns, bandRows, false, true, petMs)
+    bandCells = frame.cells
     return (
       <Box borderStyle="single" borderColor={COLORS.cyan} paddingX={1} columnGap={2}>
         {stats}

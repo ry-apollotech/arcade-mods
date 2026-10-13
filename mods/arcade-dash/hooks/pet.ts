@@ -9,8 +9,22 @@ const Z_COLOR = 0xffffff
 const UPPER_HALF = 0x2580 // ▀
 const LOWER_HALF = 0x2584 // ▄
 
+// One animation step: the scenery, the z Z and a frame without its own delay move once a step.
+export const STEP_MS = 150
+
 // Ticks each lying frame is held, so a multi-frame rest breathes slowly.
 const LIE_FRAME_TICKS = 4
+
+// The frame showing ms into a loop of frames that each last their own delay.
+function frameAt(delays: number[], ms: number): number {
+  const loop = delays.reduce((sum, d) => sum + d, 0)
+  let t = ms % loop
+  for (let i = 0; i < delays.length; i++) {
+    if (t < delays[i]!) return i
+    t -= delays[i]!
+  }
+  return 0
+}
 
 // Columns kept free right of the pet so the resting z Z can float up beside its head.
 const Z_ROOM = 4
@@ -57,6 +71,7 @@ function toBase64(bytes: Uint8Array): string {
 
 export function petFrame(
   tick: number, isAwake: boolean, columns: number, rows = petSizes().petRows, withGround = true, scenery = false,
+  ms = tick * STEP_MS,
 ): PetFrame {
   const height = rows * 2
   // With scenery on, a day scene (running) or a night scene (resting) fills every pixel the pet leaves empty.
@@ -69,7 +84,10 @@ export function petFrame(
   if (withGround) for (let x = 0; x < columns; x++) pixels[height - 1]![x] = x % 2 === 0 ? GROUND : null
 
   const sprite = isAwake ? current.walk : current.lie
-  const frameIndex = isAwake ? tick % sprite.frames.length : Math.floor(tick / LIE_FRAME_TICKS) % sprite.frames.length
+  // A GIF walk plays at its own speed; the built-in pet and every rest pose step with the tick.
+  const frameIndex = isAwake
+    ? (sprite.delays ? frameAt(sprite.delays, ms) : tick % sprite.frames.length)
+    : Math.floor(tick / LIE_FRAME_TICKS) % sprite.frames.length
   const lines = sprite.frames[frameIndex]!
   const width = lines[0]!.length
   // Runs in place: awake and resting share one spot near the right edge, the Z room beside it.

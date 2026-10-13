@@ -1,7 +1,12 @@
 // A small GIF decoder: every frame composited onto the logical screen, as packed pixels.
 // A pixel is 0xRRGGBB, or -1 where it is transparent.
 
-export type GifImage = { width: number; height: number; frames: Int32Array[] }
+// delays[i] is how long frame i shows, in milliseconds.
+export type GifImage = { width: number; height: number; frames: Int32Array[]; delays: number[] }
+
+// A delay of 0 or 10 ms means "as fast as you can"; browsers play those at 100 ms, and so do we.
+const FASTEST_DELAY_MS = 20
+const DEFAULT_DELAY_MS = 100
 
 const MAX_CODES = 4096
 
@@ -93,13 +98,18 @@ function interlacedRows(height: number): number[] {
   return rows
 }
 
-export function decodeGif(bytes: Uint8Array): GifImage {
+// maxPixels caps width x height x frames: decoding stops with an error once the next frame would pass it,
+// so a huge GIF fails fast instead of keeping the hooks worker busy for seconds.
+export function decodeGif(bytes: Uint8Array, maxPixels = Infinity): GifImage {
   const signature = String.fromCharCode(...bytes.subarray(0, 6))
   if (signature !== 'GIF87a' && signature !== 'GIF89a') throw new Error('not a GIF file')
   const u16 = (p: number) => bytes[p]! | (bytes[p + 1]! << 8)
 
   const width = u16(6)
   const height = u16(8)
+  const tooLarge = (frames: number) =>
+    new Error(`too large: ${width}x${height}${frames > 1 ? ` with ${frames}+ frames` : ''}; resize it to about 250 pixels tall or less`)
+  if (width * height > maxPixels) throw tooLarge(1)
   const screenFlags = bytes[10]!
   let pos = 13
   let globalTable: number[] = []
@@ -111,8 +121,10 @@ export function decodeGif(bytes: Uint8Array): GifImage {
 
   const canvas = new Int32Array(width * height).fill(-1)
   const frames: Int32Array[] = []
+  const delays: number[] = []
   let transparentIndex = -1
   let disposal = 0
+  let delay = DEFAULT_DELAY_MS
 
   while (pos < bytes.length) {
     const block = bytes[pos++]
@@ -122,6 +134,8 @@ export function decodeGif(bytes: Uint8Array): GifImage {
       if (label === 0xf9) {
         const flags = bytes[pos + 1]!
         disposal = (flags >> 2) & 7
+        const ms = u16(pos + 2) * 10
+        delay = ms < FASTEST_DELAY_MS ? DEFAULT_DELAY_MS : ms
         transparentIndex = flags & 1 ? bytes[pos + 4]! : -1
       }
       while (pos < bytes.length && bytes[pos] !== 0) pos += bytes[pos]! + 1 // skip sub-blocks
@@ -129,6 +143,7 @@ export function decodeGif(bytes: Uint8Array): GifImage {
       continue
     }
     if (block !== 0x2c) throw new Error(`unexpected GIF block 0x${(block ?? 0).toString(16)}`)
+    if ((frames.length + 1) * width * height > maxPixels) throw tooLarge(frames.length + 1)
 
     const left = u16(pos)
     const top = u16(pos + 2)
@@ -170,6 +185,7 @@ export function decodeGif(bytes: Uint8Array): GifImage {
       }
     }
     frames.push(canvas.slice())
+    delays.push(delay)
 
     if (disposal === 2) {
       for (let y = top; y < Math.min(height, top + h); y++) canvas.fill(-1, y * width + left, y * width + Math.min(width, left + w))
@@ -178,8 +194,9 @@ export function decodeGif(bytes: Uint8Array): GifImage {
     }
     transparentIndex = -1
     disposal = 0
+    delay = DEFAULT_DELAY_MS
   }
 
   if (frames.length === 0) throw new Error('the GIF has no frames')
-  return { width, height, frames }
+  return { width, height, frames, delays }
 }

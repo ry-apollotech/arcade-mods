@@ -18,6 +18,15 @@ describe('GIF decoding', () => {
     expect(gif.frames.length).toBe(2)
     expect(gif.frames[0]![0]).toBe(-1) // transparent corner
   })
+  test('reads each frame\'s delay in milliseconds', () => {
+    expect(decodeGif(base64ToBytes(TINY_GIF)).delays).toEqual([250, 250])
+  })
+  test('rejects a GIF over the pixel budget before decoding the rest', () => {
+    // TINY_GIF is 20x16 (320 pixels a frame) with 2 frames.
+    expect(() => decodeGif(base64ToBytes(TINY_GIF), 100)).toThrow('too large')
+    expect(() => decodeGif(base64ToBytes(TINY_GIF), 500)).toThrow('too large')
+    expect(decodeGif(base64ToBytes(TINY_GIF), 640).frames.length).toBe(2)
+  })
   test('rejects a file that is not a GIF', () => {
     expect(() => decodeGif(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0]))).toThrow('not a GIF')
   })
@@ -44,6 +53,9 @@ describe('turning a GIF into a pet', () => {
   test('shrinks frames taller than the limit', () => {
     const sprite = gifToSprite(base64ToBytes(REST_GIF), 10)
     expect(sprite.frames[0]!.length).toBe(10)
+  })
+  test('keeps the GIF\'s frame delays on the sprite', () => {
+    expect(gifToSprite(base64ToBytes(TINY_GIF)).delays).toEqual([250, 250])
   })
   test('builds a pet from a walking and a resting GIF', () => {
     const pet = gifsToPet(base64ToBytes(TINY_GIF), base64ToBytes(REST_GIF))

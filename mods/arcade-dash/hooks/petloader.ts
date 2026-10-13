@@ -115,11 +115,16 @@ function encode(grids: Grid[]): PetSprite {
   return { frames, palette: Object.fromEntries([...palette].map(([v, ch]) => [ch, v])) }
 }
 
+// width x height x frames one GIF may hold. Measured in the hooks worker, about 25 million pixels load in under
+// 2 seconds; much more and the worker misses its 5-second heartbeat and the whole mod is unloaded.
+export const MAX_GIF_PIXELS = 25_000_000
+
 export function gifToSprite(bytes: Uint8Array, maxHeight = MAX_PET_HEIGHT): PetSprite {
-  let grids = crop(toGrids(decodeGif(bytes)))
+  const image = decodeGif(bytes, MAX_GIF_PIXELS)
+  let grids = crop(toGrids(image))
   const height = grids[0]!.length
   if (height > maxHeight) grids = grids.map(g => shrink(g, height / maxHeight))
-  return encode(grids)
+  return { ...encode(grids), delays: image.delays }
 }
 
 export function gifsToPet(walk: Uint8Array, rest: Uint8Array): Pet {

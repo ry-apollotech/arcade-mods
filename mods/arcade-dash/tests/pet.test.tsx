@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-import { currentPet, petFrame, petSizes } from '../hooks/pet'
+import { currentPet, petFrame, petSizes, setPet } from '../hooks/pet'
 
 const WIDE = 80
 
@@ -32,6 +32,24 @@ test('a frame holds one cell triplet per column and row', () => {
     const frame = petFrame(5, isAwake, WIDE)
     const bytes = (frame.cells.length / 4) * 3 - (frame.cells.match(/=+$/)?.[0].length ?? 0)
     expect(bytes).toBe(WIDE * petSizes().petRows * 12)
+  }
+})
+
+test('a GIF pet plays each walking frame for its own delay', () => {
+  const builtIn = currentPet()
+  const sprite = (ch: string) => ({ frames: [[ch]], palette: { [ch]: ch === 'a' ? 0xff0000 : 0x00ff00 } })
+  setPet({ walk: { frames: [['a'], ['b']], palette: { a: 0xff0000, b: 0x00ff00 }, delays: [100, 300] }, lie: sprite('a') })
+  try {
+    const at = (ms: number) => petFrame(0, true, WIDE, undefined, true, false, ms).cells
+    const first = at(0)
+    const second = at(100)
+    expect(second).not.toBe(first)
+    expect(at(99)).toBe(first)
+    expect(at(399)).toBe(second)
+    expect(at(400)).toBe(first) // 400 ms is one full loop
+    expect(at(450)).toBe(first)
+  } finally {
+    setPet(builtIn)
   }
 })
 
