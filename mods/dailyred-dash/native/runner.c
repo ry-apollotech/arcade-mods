@@ -18,6 +18,7 @@
 #define FRAME_NS 16742706L
 #define FAST_FACTOR 4
 #define JSON_EVERY 6
+#define HEARTBEAT_FRAMES 120 // an unchanged state is printed again this often, so the mod knows we are alive
 
 static void quiet(struct mLogger* l, int c, enum mLogLevel v, const char* f, va_list a) {
 	(void) l; (void) c; (void) v; (void) f; (void) a;
@@ -96,15 +97,17 @@ int main(int argc, char** argv) {
 	static char json[16384], last[16384];
 	struct timespec next;
 	clock_gettime(CLOCK_MONOTONIC, &next);
+	long lastPrinted = 0;
 	for (long frame = 0; frameLimit < 0 || frame < frameLimit; frame++) {
 		core->setKeys(core, control_frame(control, &game));
 		core->runFrame(core);
 		if (frame % JSON_EVERY == 0) {
 			game_state_json(&game, json, sizeof json);
-			if (strcmp(json, last) != 0) {
+			if (strcmp(json, last) != 0 || frame - lastPrinted >= HEARTBEAT_FRAMES) {
 				puts(json);
 				fflush(stdout);
 				strcpy(last, json);
+				lastPrinted = frame;
 			}
 		}
 		if (fast) continue;

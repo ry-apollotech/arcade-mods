@@ -49,6 +49,17 @@ class BattleTest(unittest.TestCase):
 
 
 @unittest.skipUnless((HOME / 'dailyred.gba').exists(), 'run scripts/setup.sh first')
+class HeartbeatTest(unittest.TestCase):
+    def test_keeps_printing_while_waiting_for_a_choice(self):
+        # Waiting at the action menu nothing changes, but the mod's stall watchdog needs a line at least
+        # every 10 seconds: the runner repeats the state every 2 seconds (120 frames).
+        states = run(3600 + 1200)
+        first = next(i for i, s in enumerate(states) if s['menu'] == 'action')
+        waiting = [s for s in states[first:] if s['menu'] == 'action']
+        self.assertGreaterEqual(len(waiting), 1200 // 120 - 1)
+
+
+@unittest.skipUnless((HOME / 'dailyred.gba').exists(), 'run scripts/setup.sh first')
 class CommandTest(unittest.TestCase):
     def test_move_one_attacks(self):
         states = run(6000, commands='1 move 1\n')
