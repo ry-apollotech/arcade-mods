@@ -1,0 +1,9 @@
+{
+  "name": "arcade-dash",
+  "version": "0.2.0",
+  "description": "8-bit arcade dashboard: score band, compact tool rows, arcade spinner and branch status",
+  "author": {
+    "name": "Ryan"
+  },
+  "types": "./types/index.d.ts"
+}

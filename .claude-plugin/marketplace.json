@@ -1,0 +1,9 @@
+{
+  "name": "claude-mods",
+  "owner": { "name": "Ryan" },
+  "metadata": { "description": "A collection of Claude Code mods: our own and third-party ones we use, each credited to its author." },
+  "plugins": [
+    { "name": "arcade-dash", "source": "./mods/arcade-dash", "description": "8-bit arcade dashboard: score band, compact tool rows, arcade spinner and branch status" },
+    { "name": "flightdeck", "source": "./mods/flightdeck", "description": "Live agent dashboard by Stephen Casella (vendored, MIT). Upstream: https://github.com/scasella/claude-flightdeck" }
+  ]
+}
