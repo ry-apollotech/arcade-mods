@@ -1,0 +1,7 @@
+{
+  "name": "dailyred-dash",
+  "version": "0.1.0",
+  "description": "Daily Red in a pane: battle RED with today's team on the real FireRed engine",
+  "author": { "name": "Ryan" },
+  "types": "./types/index.d.ts"
+}
