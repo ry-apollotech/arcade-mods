@@ -22,6 +22,12 @@ export function recordAttempt(stats: Stats, date: string): Stats {
   return { days: { ...stats.days, [date]: { ...d, attempts: d.attempts + 1 } } }
 }
 
+// Takes back an attempt the runner crashed in: a crash is not the person's try.
+export function dropAttempt(stats: Stats, date: string): Stats {
+  const d = day(stats, date)
+  return { days: { ...stats.days, [date]: { ...d, attempts: Math.max(0, d.attempts - 1) } } }
+}
+
 // `date` is the day the attempt started, so a battle won after midnight counts for its own day.
 export function recordWin(stats: Stats, date: string): Stats {
   return { days: { ...stats.days, [date]: { ...day(stats, date), won: true } } }

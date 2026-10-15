@@ -11,7 +11,7 @@ describe('the demo autoplayer', () => {
     expect(picks.has(3)).toBe(false)
     expect([...picks].every(p => p === 1 || p === 2)).toBe(true)
   })
-  test('no usable move: null', () => {
-    expect(chooseMove({ ...venusaur, moves: venusaur.moves.map(m => ({ ...m, pp: 0 })) }, () => 0.5)).toBeNull()
+  test('no usable move: 1, which the game turns into Struggle', () => {
+    expect(chooseMove({ ...venusaur, moves: venusaur.moves.map(m => ({ ...m, pp: 0 })) }, () => 0.5)).toBe(1)
   })
 })

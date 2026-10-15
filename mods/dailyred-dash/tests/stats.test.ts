@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { dayStreak, EMPTY_STATS, parseStats, previousDay, recordAttempt, recordWin } from '../hooks/stats'
+import { dayStreak, dropAttempt, EMPTY_STATS, parseStats, previousDay, recordAttempt, recordWin } from '../hooks/stats'
 
 describe('per-day stats', () => {
   test('counts attempts and a win for the day the attempt started', () => {
@@ -26,6 +26,11 @@ describe('per-day stats', () => {
     let s = recordWin(recordAttempt(EMPTY_STATS, '2026-10-09'), '2026-10-09')
     s = recordAttempt(s, '2026-10-10')
     expect(dayStreak(s, '2026-10-11')).toBe(0)
+  })
+  test('a dropped attempt is taken back, never below zero', () => {
+    const s = recordAttempt(recordAttempt(EMPTY_STATS, '2026-10-11'), '2026-10-11')
+    expect(dropAttempt(s, '2026-10-11').days['2026-10-11']!.attempts).toBe(1)
+    expect(dropAttempt(EMPTY_STATS, '2026-10-11').days['2026-10-11']?.attempts ?? 0).toBe(0)
   })
   test('previous day crosses months and years', () => {
     expect(previousDay('2026-03-01')).toBe('2026-02-28')

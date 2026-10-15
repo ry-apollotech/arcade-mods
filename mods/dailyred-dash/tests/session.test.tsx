@@ -95,7 +95,7 @@ describe('a daily session', () => {
     await ui.unmount()
   })
 
-  test('the runner ending mid-battle shows retry, and the attempt is counted once', async ($, on) => {
+  test('the runner ending mid-battle shows retry, and the attempt is not counted', async ($, on) => {
     const clock = mock.clock(on)
     fakeRunner(on, [JSON.stringify(atAction), JSON.stringify(atAction)], [])
     setUp(on)
@@ -103,7 +103,7 @@ describe('a daily session', () => {
     await clock.advance(0)
     const ui = await pane($)
     expect(await ui.find({ type: 'Text', text: /stopped/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /attempt 1 /})).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /attempt 0 /})).toBeDefined()
     await ui.unmount()
   })
 })
