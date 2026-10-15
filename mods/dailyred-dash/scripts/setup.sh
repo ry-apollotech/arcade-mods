@@ -24,9 +24,10 @@ if [ ! -f /usr/include/mgba/core/core.h ]; then
 fi
 mkdir -p "$HOME_DIR/bin"
 
-# 1. dailyred at its pinned commit.
-if [ ! -d "$SRC/.git" ]; then
+# 1. dailyred at its pinned commit. A checkout with no commit is a fetch that failed: start it again.
+if ! git -C "$SRC" rev-parse -q --verify HEAD >/dev/null 2>&1; then
   step "Fetching amoi-builds/dailyred @ ${DAILYRED_COMMIT:0:10}"
+  rm -rf "$SRC"
   git init -q "$SRC"
   git -C "$SRC" remote add origin "$DAILYRED_URL"
   git -C "$SRC" fetch -q --depth 1 origin "$DAILYRED_COMMIT"
@@ -73,10 +74,13 @@ export CPATH="$TC/libpng/include${CPATH:+:$CPATH}"
 export LIBRARY_PATH="$TC/libpng/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
 export PATH="$SRC/scripts/shims:$PATH"
 
-# 4. pret/pokefirered + dailyred's patch, with dailyred's own script.
-if [ ! -d "$GAME" ]; then
+# 4. pret/pokefirered + dailyred's patch, with dailyred's own script. It is done once the patch applied
+# (the marker) or a ROM was built from it; anything else is a fetch that failed, started again.
+if [ ! -f "$GAME/.dailyred-dash-ready" ] && [ ! -f "$GAME/pokefirered_modern.gba" ]; then
   step "Fetching pret/pokefirered and applying dailyred's patch"
+  rm -rf "$GAME"
   bash "$SRC/scripts/get-pokefirered.sh"
+  touch "$GAME/.dailyred-dash-ready"
 fi
 
 # 5. The ROM. Static libpng on Linux needs -lm, so the two tools that link it are built first.

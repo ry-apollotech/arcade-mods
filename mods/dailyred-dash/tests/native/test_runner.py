@@ -70,6 +70,13 @@ class CommandTest(unittest.TestCase):
         self.assertTrue(any(s['enemy'] and s['enemy']['hp'] != hp0 for s in after) or
                         any('used' in s['message'] for s in after))
 
+    def test_advance_never_opens_a_menu_later(self):
+        # `j` pressed during text: it acts on the text, or not at all; it must not wait for the action
+        # menu and press A on FIGHT there.
+        states = run(5000, commands='1 advance\n')
+        first = next(i for i, s in enumerate(states) if s['menu'] == 'action')
+        self.assertFalse(any(s['menu'] == 'move' for s in states[first:]), 'advance opened the move menu')
+
     def test_switch_sends_out_another_pokemon(self):
         states = run(6000, commands='1 switch 2\n')
         first = next(s for s in states if s['menu'] == 'action')

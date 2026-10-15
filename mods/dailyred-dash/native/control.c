@@ -89,7 +89,7 @@ static void command_step(struct Control* c, const struct Game* g) {
 	enum Menu menu = game_menu(g);
 	switch (c->kind) {
 	case CMD_ADVANCE:
-		tap(c, KEY_A);
+		// A menu opened before the advance was acted on: pressing A now would choose for the person.
 		c->kind = CMD_NONE;
 		break;
 	case CMD_MOVE:
@@ -144,6 +144,12 @@ uint32_t control_frame(struct Control* c, const struct Game* g) {
 	if (phase == PHASE_BATTLE && game_menu(g) != MENU_NONE) {
 		if (c->frame % DECIDE_EVERY == 0) command_step(c, g);
 		return 0;
+	}
+	// Text is showing: an advance acts on it now.
+	if (c->kind == CMD_ADVANCE) {
+		c->kind = CMD_NONE;
+		tap(c, KEY_A);
+		return KEY_A;
 	}
 	return c->frame % TEXT_EVERY < 4 ? KEY_A : 0;
 }
