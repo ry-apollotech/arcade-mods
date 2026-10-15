@@ -99,14 +99,20 @@ static size_t mon_json(const struct Game* g, int battler, char* out, size_t outS
 	return o;
 }
 
-// A party Pokémon's species sits in its encrypted Growth substructure.
-static uint32_t party_species(const struct Game* g, uint32_t p) {
+// A party Pokémon's species and moves sit in its encrypted Growth and Attacks substructures.
+static uint32_t party_substruct(const struct Game* g, uint32_t p, char which, int word) {
 	static const char* ORDERS[24] = { "GAEM", "GAME", "GEAM", "GEMA", "GMAE", "GMEA", "AGEM", "AGME", "AEGM",
 		"AEMG", "AMGE", "AMEG", "EGAM", "EGMA", "EAGM", "EAMG", "EMGA", "EMAG", "MGAE", "MGEA", "MAGE", "MAEG",
 		"MEGA", "MEAG" };
 	uint32_t personality = r32(g, p), key = personality ^ r32(g, p + 4);
-	int growth = (int) (strchr(ORDERS[personality % 24], 'G') - ORDERS[personality % 24]);
-	return (r32(g, p + 32 + 12 * growth) ^ key) & 0xFFFF;
+	int index = (int) (strchr(ORDERS[personality % 24], which) - ORDERS[personality % 24]);
+	return r32(g, p + 32 + 12 * index + 4 * word) ^ key;
+}
+
+static uint32_t party_species(const struct Game* g, uint32_t p) { return party_substruct(g, p, 'G', 0) & 0xFFFF; }
+
+static uint32_t party_move(const struct Game* g, uint32_t p, int i) {
+	return (party_substruct(g, p, 'A', i / 2) >> (16 * (i % 2))) & 0xFFFF;
 }
 
 size_t game_state_json(const struct Game* g, char* out, size_t outSize) {
@@ -134,9 +140,11 @@ size_t game_state_json(const struct Game* g, char* out, size_t outSize) {
 		read_text(g, p + 8, 10, name, sizeof name);
 		json_string(name, nameEsc, sizeof nameEsc);
 		o += (size_t) snprintf(out + o, outSize - o,
-			"%s{\"slot\":%d,\"species\":%u,\"name\":\"%s\",\"level\":%u,\"hp\":%u,\"maxHp\":%u,\"active\":%s}",
+			"%s{\"slot\":%d,\"species\":%u,\"name\":\"%s\",\"level\":%u,\"hp\":%u,\"maxHp\":%u,\"active\":%s,"
+			"\"moves\":[%u,%u,%u,%u]}",
 			i ? "," : "", i + 1, party_species(g, p), nameEsc, r8(g, p + 84), r16(g, p + 86), r16(g, p + 88),
-			(uint32_t) i == active ? "true" : "false");
+			(uint32_t) i == active ? "true" : "false",
+			party_move(g, p, 0), party_move(g, p, 1), party_move(g, p, 2), party_move(g, p, 3));
 	}
 	o += (size_t) snprintf(out + o, outSize - o, "]}");
 	return o;

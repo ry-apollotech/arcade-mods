@@ -83,6 +83,13 @@ if [ ! -f "$GAME/.dailyred-dash-ready" ] && [ ! -f "$GAME/pokefirered_modern.gba
   touch "$GAME/.dailyred-dash-ready"
 fi
 
+# 4b. dailyred-dash's own change to the game: competitive movesets. A ROM built before it is rebuilt.
+if ! grep -q "AssignCompetitiveMoves" "$GAME/src/dailyred_team.c"; then
+  step "Applying competitive movesets"
+  patch -s -p1 -d "$GAME" < "$MOD/patches/competitive-moves.patch"
+  rm -f "$GAME/pokefirered_modern.gba"
+fi
+
 # 5. The ROM. Static libpng on Linux needs -lm, so the two tools that link it are built first.
 if [ ! -f "$GAME/pokefirered_modern.gba" ]; then
   for tool in gbagfx rsfont; do

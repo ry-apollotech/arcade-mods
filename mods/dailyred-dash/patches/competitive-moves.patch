@@ -1,0 +1,346 @@
+--- a/src/dailyred_team.c
++++ b/src/dailyred_team.c
+@@ -1,8 +1,11 @@
+ #include "global.h"
++#include "battle.h"
++#include "battle_main.h"
+ #include "dailyred.h"
+ #include "party_menu.h"
+ #include "pokemon.h"
+ #include "random.h"
++#include "constants/battle_move_effects.h"
+ #include "constants/items.h"
+ #include "constants/moves.h"
+ #include "constants/region_map_sections.h"
+@@ -18,9 +21,8 @@
+ //     and the normal 1/8192 shiny chance), random IVs from MIN_TEAM_IV to 31,
+ //     and EVs focused on its two best stats (see AssignFocusedEVs), close to
+ //     RED's perfect IVs and hand-picked EV spreads.
+-//   - Up to 4 different moves picked uniformly from everything the species can
+-//     learn by level-up (at any level) or by TM/HM. If the species has any
+-//     damaging move, at least one of the 4 is damaging.
++//   - A competitive moveset from everything the species can learn by level-up
++//     (at any level) or by TM/HM: see AssignCompetitiveMoves (dailyred-dash).
+ //   - One held item, picked uniformly from sBattleItems plus the type-boosting
+ //     items for the types of its own attacking moves (RED's team holds items
+ //     too).
+@@ -258,56 +260,275 @@
+     return count;
+ }
+ 
+-static bool8 IsDamagingMove(u16 move)
++// dailyred-dash: competitive movesets instead of 4 random moves. A set is the Pokemon's best attacks
++// (its own type first, then types that hit what those can't) plus one move that helps it win: a boost
++// that fits how it attacks, recovery or a status move. Close calls are settled by the team's RNG, so
++// the same species doesn't always get the same set.
++
++#define MAX_SCORE_JITTER 21 // each attack's score is scaled by 90-110%
++
++// Moves never picked while anything else is left: they do nothing in a single battle, knock out the
++// user, or need something the set lacks (Dream Eater without sleep, Snore without Rest...).
++static const u16 sUselessMoves[] =
++{
++    MOVE_SPLASH, MOVE_TELEPORT, MOVE_WATER_SPORT, MOVE_MUD_SPORT, MOVE_EXPLOSION, MOVE_SELF_DESTRUCT,
++    MOVE_HELPING_HAND, MOVE_FOLLOW_ME, MOVE_TRANSFORM, MOVE_SKETCH, MOVE_METRONOME, MOVE_MIMIC,
++    MOVE_CONVERSION, MOVE_CONVERSION_2, MOVE_GROWL, MOVE_TAIL_WHIP, MOVE_LEER, MOVE_SAND_ATTACK,
++    MOVE_SMOKESCREEN, MOVE_FLASH, MOVE_HARDEN, MOVE_WITHDRAW, MOVE_DEFENSE_CURL, MOVE_STRING_SHOT,
++    MOVE_ODOR_SLEUTH, MOVE_FORESIGHT, MOVE_LOCK_ON, MOVE_MIND_READER, MOVE_CHARGE, MOVE_SWALLOW, MOVE_SPIT_UP,
++};
++
++// Boosts, each only for the attackers it helps.
++static const u16 sPhysicalBoosts[] = {MOVE_SWORDS_DANCE, MOVE_DRAGON_DANCE, MOVE_BULK_UP, MOVE_CURSE};
++static const u16 sSpecialBoosts[] = {MOVE_CALM_MIND};
++
++// Recovery and reliable status moves, good on anything.
++static const u16 sUtilityMoves[] =
++{
++    MOVE_RECOVER, MOVE_SOFT_BOILED, MOVE_MILK_DRINK, MOVE_SLACK_OFF, MOVE_MOONLIGHT, MOVE_MORNING_SUN,
++    MOVE_SYNTHESIS, MOVE_WISH, MOVE_THUNDER_WAVE, MOVE_TOXIC, MOVE_WILL_O_WISP, MOVE_SPORE, MOVE_SLEEP_POWDER,
++    MOVE_LOVELY_KISS, MOVE_STUN_SPORE, MOVE_GLARE, MOVE_LEECH_SEED, MOVE_YAWN,
++};
++
++static bool8 IsInList(u16 move, const u16 *list, u8 count)
+ {
+-    // Fixed-damage moves (Seismic Toss, Dragon Rage, ...) have power 1.
+-    return gBattleMoves[move].power != 0;
++    u8 i;
++
++    for (i = 0; i < count; i++)
++    {
++        if (list[i] == move)
++            return TRUE;
++    }
++    return FALSE;
+ }
+ 
+-static void AssignRandomMoves(struct Pokemon *mon, u32 *rng)
++static bool8 IsUselessMove(u16 move)
+ {
+-    u16 moves[MAX_CANDIDATE_MOVES];
+-    u8 count, numMoves, numDamaging, i, j;
+-    u16 temp;
++    return IsInList(move, sUselessMoves, ARRAY_COUNT(sUselessMoves));
++}
+ 
+-    count = GetLearnableMoves(mon, moves);
+-    numMoves = min(count, MAX_MON_MOVES);
++// How much an attack is worth to this Pokemon, 0 if it isn't one worth using: its power (adjusted for
++// multi-hit, charging and recharging), times accuracy, times 1.5 for its own type, scaled down by how
++// much weaker the stat it uses (in Gen 3 a move's type decides which) is than the Pokemon's best one.
++static u32 AttackScore(u16 move, const struct SpeciesInfo *info)
++{
++    const struct BattleMove *data = &gBattleMoves[move];
++    u32 power = data->power;
++    u32 accuracy = data->accuracy != 0 ? data->accuracy : 100;
++    u32 stat = IS_TYPE_PHYSICAL(data->type) ? info->baseAttack : info->baseSpAttack;
++    u32 best = max(info->baseAttack, info->baseSpAttack);
++    u32 score;
++
++    if (power == 0 || IsUselessMove(move))
++        return 0;
++    switch (data->effect)
++    {
++    case EFFECT_LEVEL_DAMAGE: // Seismic Toss, Night Shade: 100 damage at level 100
++        power = 80;
++        break;
++    case EFFECT_MULTI_HIT:
++        power *= 3;
++        break;
++    case EFFECT_DOUBLE_HIT:
++    case EFFECT_TWINEEDLE:
++        power *= 2;
++        break;
++    case EFFECT_TRIPLE_KICK:
++        power = 45;
++        break;
++    case EFFECT_RECHARGE:
++        power = power * 3 / 5;
++        break;
++    case EFFECT_RAZOR_WIND:
++    case EFFECT_SKY_ATTACK:
++    case EFFECT_SKULL_BASH:
++    case EFFECT_SOLAR_BEAM:
++    case EFFECT_SEMI_INVULNERABLE:
++    case EFFECT_FOCUS_PUNCH:
++    case EFFECT_ROLLOUT:
++        power /= 2;
++        break;
++    case EFFECT_RAMPAGE:
++    case EFFECT_RECOIL_IF_MISS:
++        power = power * 4 / 5;
++        break;
++    case EFFECT_EXPLOSION:
++    case EFFECT_OHKO:
++    case EFFECT_DREAM_EATER:
++    case EFFECT_SNORE:
++    case EFFECT_FAKE_OUT:
++    case EFFECT_FUTURE_SIGHT:
++    case EFFECT_RAGE:
++        return 0;
++    default:
++        // Other fixed or variable damage (Hidden Power, Return, Flail, Counter...) is unreliable here.
++        if (power <= 1)
++            return 0;
++        break;
++    }
++
++    score = power * accuracy;
++    // Fixed damage gets no bonus for the Pokemon's own type.
++    if (data->effect != EFFECT_LEVEL_DAMAGE && (data->type == info->types[0] || data->type == info->types[1]))
++        score = score * 3 / 2;
++    if (best != 0)
++        score = score * stat / best * stat / best;
++    return score;
++}
++
++// The type chart's multiplier (TYPE_MUL_*) for an attack type against one defending type.
++static u8 TypeMultiplier(u8 attackType, u8 defenseType)
++{
++    u32 i;
+ 
+-    // Partial Fisher-Yates shuffle: moves[0..numMoves) becomes a uniformly
+-    // random selection without repeats.
+-    for (i = 0; i < numMoves; i++)
++    for (i = 0; TYPE_EFFECT_ATK_TYPE(i) != TYPE_ENDTABLE; i += 3)
+     {
+-        j = i + TeamRandom(rng) % (count - i);
+-        SWAP(moves[i], moves[j], temp);
++        if (TYPE_EFFECT_ATK_TYPE(i) == TYPE_FORESIGHT)
++            continue;
++        if (TYPE_EFFECT_ATK_TYPE(i) == attackType && TYPE_EFFECT_DEF_TYPE(i) == defenseType)
++            return TYPE_EFFECT_MULTIPLIER(i);
+     }
++    return TYPE_MUL_NORMAL;
++}
+ 
+-    // If none of the picks can deal damage, swap one of them for a random
+-    // damaging move from the rest of the pool (if there is one).
+-    for (i = 0; i < numMoves && !IsDamagingMove(moves[i]); i++)
+-        ;
+-    if (i == numMoves)
++// How much `type` adds against the defending types the chosen attacks don't already hit well.
++static u32 CoverageGain(u8 type, const u8 *bestMultiplier)
++{
++    u32 gain = 0;
++    u8 defense, mul;
++
++    for (defense = 0; defense < NUMBER_OF_MON_TYPES; defense++)
+     {
+-        numDamaging = 0;
+-        for (j = numMoves; j < count; j++)
+-        {
+-            if (IsDamagingMove(moves[j]))
+-                numDamaging++;
+-        }
+-        if (numDamaging != 0)
++        if (defense == TYPE_MYSTERY)
++            continue;
++        mul = TypeMultiplier(type, defense);
++        if (mul > bestMultiplier[defense])
++            gain += mul - bestMultiplier[defense];
++    }
++    return gain;
++}
++
++// Adds the best remaining attack to `chosen`, only of the Pokemon's own types when `ownTypeOnly`;
++// FALSE when none is left. An attack of a type already chosen is worth a quarter; otherwise new
++// coverage raises its worth.
++static bool8 PickAttack(const u16 *pool, const u32 *scores, u8 count, u16 *chosen, u8 *numChosen, u8 *bestMultiplier,
++                        const struct SpeciesInfo *info, bool8 ownTypeOnly)
++{
++    u32 value, bestValue = 0;
++    u8 i, j, type, pick = 0;
++    u8 defense, mul;
++
++    for (i = 0; i < count; i++)
++    {
++        if (scores[i] == 0 || IsInList(pool[i], chosen, *numChosen))
++            continue;
++        type = gBattleMoves[pool[i]].type;
++        if (ownTypeOnly && (type != info->types[0] && type != info->types[1]
++                            || gBattleMoves[pool[i]].effect == EFFECT_LEVEL_DAMAGE))
++            continue;
++        value = scores[i];
++        for (j = 0; j < *numChosen && gBattleMoves[chosen[j]].type != type; j++)
++            ;
++        if (j < *numChosen)
++            value /= 4;
++        else if (*numChosen != 0)
++            value = value / 100 * (100 + CoverageGain(type, bestMultiplier));
++        if (value > bestValue)
+         {
+-            u8 pick = TeamRandom(rng) % numDamaging;
+-            for (j = numMoves; j < count; j++)
+-            {
+-                if (IsDamagingMove(moves[j]) && pick-- == 0)
+-                    break;
+-            }
+-            i = TeamRandom(rng) % numMoves;
+-            SWAP(moves[i], moves[j], temp);
++            bestValue = value;
++            pick = i;
+         }
+     }
++    if (bestValue == 0)
++        return FALSE;
++
++    type = gBattleMoves[pool[pick]].type;
++    for (defense = 0; defense < NUMBER_OF_MON_TYPES; defense++)
++    {
++        mul = TypeMultiplier(type, defense);
++        if (mul > bestMultiplier[defense])
++            bestMultiplier[defense] = mul;
++    }
++    chosen[(*numChosen)++] = pool[pick];
++    return TRUE;
++}
++
++// One utility move from the pool that suits the chosen attacks, picked at random; MOVE_NONE if none.
++// Toxic only when nothing else fits: nearly everything learns it, and it would be on most sets.
++static u16 PickUtilityMove(const u16 *pool, u8 count, const u16 *attacks, u8 numAttacks, const struct SpeciesInfo *info, u32 *rng)
++{
++    u16 options[MAX_CANDIDATE_MOVES];
++    u8 numOptions = 0, physical = 0, i;
++    bool8 toxic = FALSE;
++    bool8 ghost = (info->types[0] == TYPE_GHOST || info->types[1] == TYPE_GHOST);
++
++    for (i = 0; i < numAttacks; i++)
++    {
++        if (IS_TYPE_PHYSICAL(gBattleMoves[attacks[i]].type))
++            physical++;
++    }
++    for (i = 0; i < count; i++)
++    {
++        if (pool[i] == MOVE_TOXIC)
++            toxic = TRUE;
++        else if (IsInList(pool[i], sUtilityMoves, ARRAY_COUNT(sUtilityMoves))
++         || (physical * 2 > numAttacks && IsInList(pool[i], sPhysicalBoosts, ARRAY_COUNT(sPhysicalBoosts))
++             && !(pool[i] == MOVE_CURSE && ghost))
++         || (physical * 2 < numAttacks && IsInList(pool[i], sSpecialBoosts, ARRAY_COUNT(sSpecialBoosts))))
++            options[numOptions++] = pool[i];
++    }
++    if (numOptions != 0)
++        return options[TeamRandom(rng) % numOptions];
++    return toxic ? MOVE_TOXIC : MOVE_NONE;
++}
++
++// A random move from the pool not chosen yet, skipping useless ones unless `anything`; MOVE_NONE if none.
++static u16 PickFillerMove(const u16 *pool, u8 count, const u16 *chosen, u8 numChosen, bool8 anything, u32 *rng)
++{
++    u16 options[MAX_CANDIDATE_MOVES];
++    u8 numOptions = 0, i;
++
++    for (i = 0; i < count; i++)
++    {
++        if (!IsInList(pool[i], chosen, numChosen) && (anything || !IsUselessMove(pool[i])))
++            options[numOptions++] = pool[i];
++    }
++    return numOptions != 0 ? options[TeamRandom(rng) % numOptions] : MOVE_NONE;
++}
++
++static void AssignCompetitiveMoves(struct Pokemon *mon, u32 *rng)
++{
++    const struct SpeciesInfo *info = &gSpeciesInfo[GetMonData(mon, MON_DATA_SPECIES)];
++    u16 pool[MAX_CANDIDATE_MOVES];
++    u32 scores[MAX_CANDIDATE_MOVES];
++    u16 chosen[MAX_MON_MOVES];
++    u8 bestMultiplier[NUMBER_OF_MON_TYPES] = {0};
++    u8 count, numChosen = 0, i;
++    u16 move;
++
++    count = GetLearnableMoves(mon, pool);
++    for (i = 0; i < count; i++)
++        scores[i] = AttackScore(pool[i], info) / 100 * (90 + TeamRandom(rng) % MAX_SCORE_JITTER);
++
++    // An attack of its own type first, then three attacks in all and a utility move; a fourth attack
++    // when no utility move suits it.
++    PickAttack(pool, scores, count, chosen, &numChosen, bestMultiplier, info, TRUE);
++    while (numChosen < MAX_MON_MOVES - 1 && PickAttack(pool, scores, count, chosen, &numChosen, bestMultiplier, info, FALSE))
++        ;
++    move = PickUtilityMove(pool, count, chosen, numChosen, info, rng);
++    if (move != MOVE_NONE)
++        chosen[numChosen++] = move;
++    else
++        PickAttack(pool, scores, count, chosen, &numChosen, bestMultiplier, info, FALSE);
++
++    // Pokemon with few attacks: fill up with other moves, useless ones only as a last resort.
++    while (numChosen < MAX_MON_MOVES && (move = PickFillerMove(pool, count, chosen, numChosen, FALSE, rng)) != MOVE_NONE)
++        chosen[numChosen++] = move;
++    while (numChosen < MAX_MON_MOVES && (move = PickFillerMove(pool, count, chosen, numChosen, TRUE, rng)) != MOVE_NONE)
++        chosen[numChosen++] = move;
+ 
+     for (i = 0; i < MAX_MON_MOVES; i++)
+-        SetMonMoveSlot(mon, i < numMoves ? moves[i] : MOVE_NONE, i);
++        SetMonMoveSlot(mon, i < numChosen ? chosen[i] : MOVE_NONE, i);
+ }
+ 
+ static void AssignRandomItem(struct Pokemon *mon, u32 *rng)
+@@ -429,7 +650,7 @@
+ static void CreateRandomMon(struct Pokemon *mon, u16 species, u32 *rng)
+ {
+     CreateTeamMon(mon, species, rng);
+-    AssignRandomMoves(mon, rng);
++    AssignCompetitiveMoves(mon, rng);
+     FinishTeamMon(mon, rng);
+ }
+ 
