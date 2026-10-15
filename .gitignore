@@ -2,3 +2,7 @@
 .claude-plugin/types/
 node_modules/
 .DS_Store
+
+# Python bytecode from running the converters and native tests
+__pycache__/
+*.pyc
