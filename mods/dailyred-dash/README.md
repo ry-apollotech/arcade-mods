@@ -2,7 +2,8 @@
 
 [Daily Red](https://github.com/amoi-builds/dailyred) in a Claude Code pane: today's six random
 level-100 Pokémon against RED at the top of the mountain, on the real Pokémon FireRed battle engine,
-drawn as readable terminal text. Retry as often as you like; your attempts and day streak are kept.
+drawn as readable terminal text. Your first battle each day is the day's shared team; every retry
+brings a new team. Your attempts and day streak are kept.
 
 ## Set up (once)
 
@@ -19,7 +20,7 @@ drawn as readable terminal text. Retry as often as you like; your attempts and d
 | `1`–`4` | use a move |
 | `s`, then `1`–`6` | switch Pokémon |
 | `j` | next (advance text) |
-| `r` | retry today's team after a battle |
+| `r` | rematch after a battle, with a new team |
 
 `/dailyred stop` ends a battle. Left alone for 15 minutes with the pane open, it plays demo battles
 with random teams; any key stops the demo. Demos never count.

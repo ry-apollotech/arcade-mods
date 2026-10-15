@@ -101,6 +101,22 @@ describe('the session owns its runner', () => {
   })
 })
 
+describe('retries', () => {
+  test('a retry after a lost battle brings a new team', async ($, on) => {
+    const clock = mock.clock(on)
+    const log = { spawned: [] as string[][], ended: 0 }
+    hangingRunner(on, [JSON.stringify(atAction), JSON.stringify({ ...atAction, menu: 'none', result: 'lost' })], log)
+    engine(on)
+    await $.command.run({ command: 'dailyred' })
+    await clock.advance(0)
+    await $.command.run({ command: 'dailyred' })
+    await clock.advance(0)
+    const seed = (argv: string[]) => argv[argv.indexOf('--seed') + 1]
+    expect(log.spawned.length).toBe(2)
+    expect(seed(log.spawned[1]!)).not.toBe(seed(log.spawned[0]!))
+  })
+})
+
 describe('keys that always lead somewhere', () => {
   test('with every move out of PP, STRUGGLE is offered', async ($, on) => {
     const clock = mock.clock(on)

@@ -5,7 +5,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 import type { BattleState, Screen } from '../types'
 import { chooseMove } from './autoplay'
-import { dailySeed, today } from './seed'
+import { attemptSeed, today } from './seed'
 import type { SpriteSheet } from './sprites'
 import { parseSpriteSheet } from './sprites'
 import { parseStateLine } from './state'
@@ -109,7 +109,7 @@ async function follow($: EngineInterface, s: Session, state: BattleState) {
   }
   if (s.mode === 'daily' && state.result !== 'none') {
     end(s)
-    await card($, [state.result === 'won' ? 'You beat RED!' : 'Your team was wiped out.', 'Press r to try today\'s team again.'], ['r'])
+    await card($, [state.result === 'won' ? 'You beat RED!' : 'Your team was wiped out.', 'Press r for a rematch with a new team.'], ['r'])
     return
   }
   await update($, screen, () => ({ kind: 'battle', mode: s.mode, state, picking }) as Screen)
@@ -126,7 +126,9 @@ async function play($: EngineInterface, mode: 'daily' | 'demo') {
   }
   if (!sheet && (await $.fs.exists(p.sprites))) sheet = parseSpriteSheet(await $.fs.read(p.sprites) as string)
   const date = today(new Date(await $.clock.now()))
-  const seed = mode === 'daily' ? dailySeed(date) : 1 + Math.floor(Math.random() * 0xfffffffe)
+  // Each daily attempt gets its own team: the shared one first, a new one on every retry.
+  const attempt = (parseStats(await $.store.get('stats')).days[date]?.attempts ?? 0) + 1
+  const seed = mode === 'daily' ? attemptSeed(date, attempt) : 1 + Math.floor(Math.random() * 0xfffffffe)
   const mine: Session = { stop: false, mode, date, counted: false, won: false, lastMenu: '', stream: null }
   if (session) end(session)
   session = mine
