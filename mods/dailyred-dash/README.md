@@ -5,6 +5,11 @@ level-100 Pokémon against RED at the top of the mountain, on the real Pokémon 
 drawn as readable terminal text. Your first battle each day is the day's shared team; every retry
 brings a new team. Your attempts and day streak are kept.
 
+One change to Daily Red: your team gets competitive movesets instead of four random moves. Each
+Pokémon has an attack of its own type, attacks that cover other types, and one support move (a boost,
+recovery or status) when one suits it. The change is `patches/competitive-moves.patch`, applied by
+setup, so your daily team differs from the website's for the same day.
+
 ## Set up (once)
 
 1. `sudo apt install -y libmgba-dev` (in a WSL/Linux terminal)
