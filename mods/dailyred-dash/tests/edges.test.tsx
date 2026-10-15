@@ -5,14 +5,14 @@ import { atAction } from './fixtures'
 
 const PANE_PROPS = { title: 'DAILY RED', isFocused: true, bodyColumns: 64, placement: 'dock' as const, scroll: { offset: 0, bodyRows: 22 }, view: {} }
 
-function engine(on: any, writes: string[] = []) {
+function engine(on: any, writes: string[] = [], sheet = '{}') {
   const store = new Map<string, unknown>()
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('env.get', (_$: unknown, e: { name: string }) => ({ value: e.name === 'DAILYRED_HOME' ? '/dailyred-test' : undefined }))
   on('store.get', (_$: unknown, e: { key: string }) => ({ value: store.get(e.key) }))
   on('store.set', (_$: unknown, e: { key: string; value: unknown }) => { store.set(e.key, e.value); return { value: undefined } })
   on('fs.exists', () => ({ value: true }))
-  on('fs.read', () => ({ value: '{}' }))
+  on('fs.read', () => ({ value: sheet }))
   on('fs.write', (_$: unknown, e: { text: string }) => { writes.push(e.text); return { value: undefined } })
   return store
 }
@@ -167,5 +167,23 @@ describe('demo mode', () => {
     // 15.5 minutes: a single demo (begun on the 15th minute) that has not reached its 10 s stall check.
     await clock.advance(15.5 * 60 * 1000)
     expect(writes.filter(w => / move /.test(w)).length).toBe(1)
+  })
+})
+
+// Sprites for VENUSAUR (3) and CHARIZARD (6): a filled 32x32 square in palette color 1.
+const SHEET = JSON.stringify(Object.fromEntries([3, 6].map(s => [String(s), { palette: [0, 0xff0000, ...Array(14).fill(0)], front: '1'.repeat(1024), back: '1'.repeat(1024) }])))
+
+describe('move animations', () => {
+  test('a move that lands plays frames on the target\'s sprite', async ($, on) => {
+    const clock = mock.clock(on)
+    const blits: string[] = []
+    const hit = { ...atAction, menu: 'none' as const, message: 'VENUSAUR used SOLARBEAM!', enemy: { ...atAction.enemy!, hp: 100 } }
+    hangingRunner(on, [JSON.stringify(atAction), JSON.stringify(hit)], { spawned: [], ended: 0 })
+    engine(on, [], SHEET)
+    on('ui.blit', (_$: unknown, e: { key: string }) => { blits.push(e.key); return { value: {} } })
+    await $.command.run({ command: 'dailyred' })
+    await clock.advance(2000)
+    expect(blits.filter(k => k === 'enemy').length).toBeGreaterThan(5)
+    expect(blits.filter(k => k === 'player').length).toBe(0)
   })
 })

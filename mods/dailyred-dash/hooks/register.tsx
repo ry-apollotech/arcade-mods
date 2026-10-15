@@ -5,9 +5,11 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 import type { BattleState, Screen } from '../types'
 import { chooseMove } from './autoplay'
+import type { Grid, Side } from './effects'
+import { burstFrames, detectEvents, faintFrames, hitFrames } from './effects'
 import { attemptSeed, today } from './seed'
 import type { SpriteSheet } from './sprites'
-import { parseSpriteSheet } from './sprites'
+import { gridCells, parseSpriteSheet, spriteGrid } from './sprites'
 import { parseStateLine } from './state'
 import { dayStreak, dropAttempt, parseStats, recordAttempt, recordWin } from './stats'
 import { canSwitch, renderScreen } from './view'
@@ -16,6 +18,7 @@ const PANE = 'dailyred'
 const TITLE = 'DAILY RED'
 const IDLE_MS = 15 * 60 * 1000
 const STALL_MS = 10_000
+const FRAME_MS = 66 // move animations play at about 15 frames a second
 const SETUP_RUNNING = 'Daily Red setup is running; wait for it to finish.'
 // One commands file per Claude Code instance, so two windows never steer each other's battle.
 const INSTANCE = Math.random().toString(36).slice(2, 10)
@@ -43,6 +46,8 @@ let seq = 0
 let sheet: SpriteSheet | null = null
 let lastInput = 0
 let settingUp = false
+// The animation playing on each sprite, if any.
+const playing: Record<Side, { cancel: () => void } | null> = { player: null, enemy: null }
 
 async function paths($: EngineInterface): Promise<Paths> {
   const home = (await $.env.get('DAILYRED_HOME')) ?? `${await $.env.get('HOME')}/.claude/dailyred`
@@ -81,8 +86,45 @@ async function card($: EngineInterface, lines: string[], keys: string[]) {
   await update($, screen, () => ({ kind: 'card', title: TITLE, lines, keys }) as Screen)
 }
 
+// Plays `frames` on one side's sprite, then puts the plain sprite back. A newer animation replaces it.
+function animate($: EngineInterface, side: Side, frames: Grid[], rest: Grid) {
+  playing[side]?.cancel()
+  let i = 0
+  const timer = $.clock.every(FRAME_MS, () => {
+    const frame = i < frames.length ? frames[i] : rest
+    i++
+    if (i > frames.length) {
+      timer.cancel()
+      playing[side] = null
+    }
+    background($.ui.blit({ requestId: PANE, key: side, cells: gridCells(frame!).cells }))
+  })
+  playing[side] = timer
+}
+
+// The animations for what changed between two states: a burst, then a hit or a faint, per side.
+function playEvents($: EngineInterface, prev: BattleState | null, state: BattleState) {
+  if (!sheet) return
+  const frames: Record<Side, Grid[]> = { player: [], enemy: [] }
+  const bases: Record<Side, Grid | null> = {
+    player: state.player ? spriteGrid(sheet, state.player.species, 'back') : null,
+    enemy: state.enemy ? spriteGrid(sheet, state.enemy.species, 'front') : null,
+  }
+  for (const event of detectEvents(prev, state)) {
+    const base = bases[event.target]
+    if (!base) continue
+    if (event.kind === 'move') frames[event.target].push(...burstFrames(base, event.type))
+    else if (event.kind === 'hit') frames[event.target].push(...hitFrames(base))
+    else frames[event.target].push(...faintFrames(base))
+  }
+  for (const side of ['player', 'enemy'] as const) {
+    if (frames[side].length > 0) animate($, side, frames[side], bases[side]!)
+  }
+}
+
 // Applies one runner state: counts the attempt once, records a win, drives a demo, updates the pane.
 async function follow($: EngineInterface, s: Session, state: BattleState) {
+  const prev = latest
   latest = state
   const menuChanged = state.menu !== s.lastMenu
   s.lastMenu = state.menu
@@ -113,6 +155,7 @@ async function follow($: EngineInterface, s: Session, state: BattleState) {
     return
   }
   await update($, screen, () => ({ kind: 'battle', mode: s.mode, state, picking }) as Screen)
+  playEvents($, prev, state)
 }
 
 // One battle session: spawns the runner and follows its lines until it ends or is stopped.
