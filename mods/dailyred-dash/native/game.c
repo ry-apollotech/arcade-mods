@@ -53,6 +53,17 @@ static int effectiveness(const struct Game* g, int moveType, int t1, int t2) {
 	return mult;
 }
 
+// A status1 word as the game's badge: sleep is a turn count in bits 0-2, then one bit per condition.
+static const char* status_badge(uint32_t status) {
+	if (status & 0x7) return "SLP";
+	if (status & 0x80) return "TOX";
+	if (status & 0x8) return "PSN";
+	if (status & 0x10) return "BRN";
+	if (status & 0x20) return "FRZ";
+	if (status & 0x40) return "PAR";
+	return "";
+}
+
 // Escapes `s` for a JSON string.
 static void json_string(const char* s, char* out, size_t outSize) {
 	size_t o = 0;
@@ -75,8 +86,10 @@ static size_t mon_json(const struct Game* g, int battler, char* out, size_t outS
 	read_text(g, g->sym->typeNames + 7 * t1, 7, typeA, sizeof typeA);
 	read_text(g, g->sym->typeNames + 7 * t2, 7, typeB, sizeof typeB);
 	size_t o = (size_t) snprintf(out, outSize,
-		"{\"species\":%u,\"name\":\"%s\",\"level\":%u,\"hp\":%u,\"maxHp\":%u,\"types\":[\"%s\"%s%s%s],\"moves\":[",
-		r16(g, m), esc, r8(g, m + 0x2A), r16(g, m + 0x28), r16(g, m + 0x2C), typeA,
+		"{\"species\":%u,\"name\":\"%s\",\"level\":%u,\"hp\":%u,\"maxHp\":%u,\"status\":\"%s\",\"confused\":%s,"
+		"\"types\":[\"%s\"%s%s%s],\"moves\":[",
+		r16(g, m), esc, r8(g, m + 0x2A), r16(g, m + 0x28), r16(g, m + 0x2C), status_badge(r32(g, m + 0x4C)),
+		(r32(g, m + 0x50) & 0x7) ? "true" : "false", typeA,
 		t2 != t1 ? ",\"" : "", t2 != t1 ? typeB : "", t2 != t1 ? "\"" : "");
 	int written = 0;
 	uint32_t bonuses = r8(g, m + 0x3B);
@@ -141,9 +154,9 @@ size_t game_state_json(const struct Game* g, char* out, size_t outSize) {
 		json_string(name, nameEsc, sizeof nameEsc);
 		o += (size_t) snprintf(out + o, outSize - o,
 			"%s{\"slot\":%d,\"species\":%u,\"name\":\"%s\",\"level\":%u,\"hp\":%u,\"maxHp\":%u,\"active\":%s,"
-			"\"moves\":[%u,%u,%u,%u]}",
+			"\"status\":\"%s\",\"moves\":[%u,%u,%u,%u]}",
 			i ? "," : "", i + 1, party_species(g, p), nameEsc, r8(g, p + 84), r16(g, p + 86), r16(g, p + 88),
-			(uint32_t) i == active ? "true" : "false",
+			(uint32_t) i == active ? "true" : "false", status_badge(r32(g, p + 80)),
 			party_move(g, p, 0), party_move(g, p, 1), party_move(g, p, 2), party_move(g, p, 3));
 	}
 	o += (size_t) snprintf(out + o, outSize - o, "]}");

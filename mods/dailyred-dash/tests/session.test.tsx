@@ -79,6 +79,46 @@ describe('a daily session', () => {
     await ui.unmount()
   })
 
+  test('status conditions show as badges, on the battlers and in the party', async ($, on) => {
+    const clock = mock.clock(on)
+    const statused = {
+      ...atAction,
+      player: { ...atAction.player!, status: 'PAR', confused: true },
+      enemy: { ...atAction.enemy!, status: 'SLP', confused: false },
+      party: atAction.party.map(p => ({ ...p, status: p.name === 'ALAKAZAM' ? 'PSN' : '' })),
+    }
+    on('process.spawn', async function* () {
+      yield { stream: 'stdout' as const, text: JSON.stringify(statused) + '\n' }
+      await new Promise(() => {})
+    })
+    setUp(on)
+    await $.command.run({ command: 'dailyred' })
+    await clock.advance(0)
+    const ui = await pane($)
+    expect(await ui.find({ type: 'Text', text: /^SLP$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^PAR$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^CNF$/ })).toBeDefined()
+    await ui.press({ key: 'key-s' })
+    expect(await ui.find({ type: 'Button', text: /ALAKAZAM.*PSN/ })).toBeDefined()
+    await ui.unmount()
+  })
+
+  test('no badge without a status', async ($, on) => {
+    const clock = mock.clock(on)
+    on('process.spawn', async function* () {
+      yield { stream: 'stdout' as const, text: JSON.stringify(atAction) + '\n' }
+      await new Promise(() => {})
+    })
+    setUp(on)
+    await $.command.run({ command: 'dailyred' })
+    await clock.advance(0)
+    const ui = await pane($)
+    for (const badge of ['SLP', 'PSN', 'TOX', 'BRN', 'FRZ', 'PAR', 'CNF']) {
+      expect(await ui.find({ type: 'Text', text: new RegExp(`^${badge}$`) })).toBeUndefined()
+    }
+    await ui.unmount()
+  })
+
   test('no move is sent while no choice is open', async ($, on) => {
     const clock = mock.clock(on)
     const writes: string[] = []

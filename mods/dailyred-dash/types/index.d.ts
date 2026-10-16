@@ -1,6 +1,11 @@
 export type MoveInfo = { slot: number; id: number; name: string; pp: number; maxPp: number; power: number; type: string; effect: number }
-export type Mon = { species: number; name: string; level: number; hp: number; maxHp: number; types: string[]; moves: MoveInfo[] }
-export type PartyMon = { slot: number; species: number; name: string; level: number; hp: number; maxHp: number; active: boolean }
+// A status condition as the game's badge: '' for none, else SLP, PSN, TOX (badly poisoned), BRN, FRZ or PAR.
+export type Status = '' | 'SLP' | 'PSN' | 'TOX' | 'BRN' | 'FRZ' | 'PAR'
+export type Mon = {
+  species: number; name: string; level: number; hp: number; maxHp: number; types: string[]; moves: MoveInfo[]
+  status?: Status; confused?: boolean
+}
+export type PartyMon = { slot: number; species: number; name: string; level: number; hp: number; maxHp: number; active: boolean; status?: Status }
 export type Phase = 'exploring' | 'battle' | 'result' | 'finished'
 export type Menu = 'none' | 'action' | 'move' | 'target' | 'party'
 export type BattleState = {

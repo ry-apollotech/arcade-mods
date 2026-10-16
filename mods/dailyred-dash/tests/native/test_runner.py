@@ -49,6 +49,20 @@ class BattleTest(unittest.TestCase):
 
 
 @unittest.skipUnless((HOME / 'dailyred.gba').exists(), 'run scripts/setup.sh first')
+class StatusTest(unittest.TestCase):
+    def test_a_sleeping_foe_shows_slp(self):
+        # Seed 65's lead VICTREEBEL has SLEEP POWDER in slot 4; with this run's random numbers it hits.
+        states = run(5200, commands='1 move 4\n', seed=65, daily=False)
+        first = next(s for s in states if s['menu'] == 'action')
+        self.assertEqual(first['enemy']['status'], '')
+        self.assertFalse(first['enemy']['confused'])
+        self.assertTrue(all(p['status'] == '' for p in first['party']))
+        asleep = next(i for i, s in enumerate(states) if 'fell asleep' in s['message'])
+        self.assertEqual(states[-1]['enemy']['status'], 'SLP')
+        self.assertTrue(all(s['enemy']['status'] == 'SLP' for s in states[asleep + 1:] if s['enemy']))
+
+
+@unittest.skipUnless((HOME / 'dailyred.gba').exists(), 'run scripts/setup.sh first')
 class HeartbeatTest(unittest.TestCase):
     def test_keeps_printing_while_waiting_for_a_choice(self):
         # Waiting at the action menu nothing changes, but the mod's stall watchdog needs a line at least

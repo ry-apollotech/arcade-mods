@@ -19,9 +19,24 @@ function hpColor(mon: Mon): string {
   return share > 0.5 ? 'green' : share > 0.2 ? 'yellow' : 'red'
 }
 
+// The game's status badge colors, and CNF for confusion.
+const BADGE_COLORS: Record<string, string> = {
+  SLP: 'gray', PSN: 'magenta', TOX: 'magenta', BRN: 'red', FRZ: 'cyan', PAR: 'yellow', CNF: 'blue',
+}
+
+function badges(els: El, mon: Mon) {
+  const { Text } = els
+  const shown = [mon.status, mon.confused ? 'CNF' : ''].filter((b): b is string => !!b)
+  return shown.map(b => [' ', <Text key={`badge-${b}`} bold inverse color={BADGE_COLORS[b]}>{b}</Text>])
+}
+
 function monLine(els: El, mon: Mon, owner: string) {
   const { Text } = els
-  return <Text><Text bold>{owner}{mon.name} Lv{mon.level}</Text>  HP <Text color={hpColor(mon)}>{hpBar(mon)}</Text> {mon.hp}/{mon.maxHp}</Text>
+  return (
+    <Text>
+      <Text bold>{owner}{mon.name} Lv{mon.level}</Text>{badges(els, mon)}  HP <Text color={hpColor(mon)}>{hpBar(mon)}</Text> {mon.hp}/{mon.maxHp}
+    </Text>
+  )
 }
 
 function sprite(els: El, sheet: SpriteSheet | null, species: number, side: 'front' | 'back', key: string) {
@@ -57,8 +72,8 @@ function party(els: El, state: BattleState, onKey: (k: string) => void) {
   return (
     <Box flexDirection="row" flexWrap="wrap" columnGap={3}>
       {state.party.map(p => (p.hp > 0 && !p.active
-        ? <Button key={`party-${p.slot}`} plain hotkey={String(p.slot)} label={`${p.name} ${p.hp}/${p.maxHp}`} onPress={() => onKey(String(p.slot))} />
-        : <Text key={`party-${p.slot}`} dimColor>{p.slot}: {p.name} {p.hp}/{p.maxHp}{p.active ? ' (out)' : ''}</Text>))}
+        ? <Button key={`party-${p.slot}`} plain hotkey={String(p.slot)} label={`${p.name} ${p.hp}/${p.maxHp}${p.status ? ` ${p.status}` : ''}`} onPress={() => onKey(String(p.slot))} />
+        : <Text key={`party-${p.slot}`} dimColor>{p.slot}: {p.name} {p.hp}/{p.maxHp}{p.status ? ` ${p.status}` : ''}{p.active ? ' (out)' : ''}</Text>))}
     </Box>
   )
 }
