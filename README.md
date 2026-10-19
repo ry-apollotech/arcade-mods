@@ -1,4 +1,4 @@
-# claude-mods
+# arcade-mods
 
 A collection of Claude Code mods (Claude Code 2.1.287+).
 
@@ -15,17 +15,17 @@ Third-party mods are included unmodified with their original license; see each f
 Add the collection once, then install the mods you want:
 
 ```
-/plugin marketplace add <owner>/claude-mods
-/plugin install arcade-dash@claude-mods
-/plugin install flightdeck@claude-mods
-/plugin install dailyred-dash@claude-mods
+/plugin marketplace add ry-apollotech/arcade-mods
+/plugin install arcade-dash@arcade-mods
+/plugin install flightdeck@arcade-mods
+/plugin install dailyred-dash@arcade-mods
 /reload-plugins
 ```
 
 Or try one for a single session from a clone: `claude --plugin-dir ./mods/<mod>`.
 
 - **arcade-dash and flightdeck** both draw above the prompt, so enable one at a time
-  (`/plugin disable <mod>@claude-mods` turns one off).
+  (`/plugin disable <mod>@arcade-mods` turns one off).
 - **dailyred-dash** opens its own pane and works alongside either. It runs on Linux or WSL and
   needs a one-time setup: `sudo apt install -y libmgba-dev`, then `/dailyred setup` in Claude Code,
   which builds the game from source on your machine (about 2 minutes). No ROM is included or

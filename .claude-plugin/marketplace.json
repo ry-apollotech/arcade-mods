@@ -1,5 +1,5 @@
 {
-  "name": "claude-mods",
+  "name": "arcade-mods",
   "owner": { "name": "Ryan" },
   "metadata": { "description": "A collection of Claude Code mods: our own and third-party ones we use, each credited to its author." },
   "plugins": [

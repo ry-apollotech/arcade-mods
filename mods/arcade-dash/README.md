@@ -16,8 +16,8 @@ and rests when it's idle.
 In a Claude Code terminal session:
 
 ```
-/plugin marketplace add <owner>/claude-mods
-/plugin install arcade-dash@claude-mods
+/plugin marketplace add ry-apollotech/arcade-mods
+/plugin install arcade-dash@arcade-mods
 /reload-plugins
 ```
 
