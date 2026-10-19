@@ -23,27 +23,28 @@ Fueldeck, Flightdeck and arcade-dash all draw above the prompt, so enable one at
 ## The fuel panel
 
 ```
-╭ fuel ───────────────────────────── 1.2M tok · hit 92% ╮
-│ in 14k · out 61k · cache 1.1Mr/88kw                    │
-│ main            ▰▰▰▰▰▰▰▰  910k  48 req                 │
-│ Explore         ▰▰▱▱▱▱▱▱  220k  12 req                 │
-│ planner         ▰▱▱▱▱▱▱▱   70k  4 req                  │
-│ every request ~38k · by source                         │
-│ memory files    ▰▰▰▰▰▰▰▰    6k  4 files                │
-│ everything-cla… ▰▰▰▰▰▱▱▱    4k  52 skills · 9 agents   │
-│ context7        ▰▱▱▱▱▱▱▱    1k  2 tools                │
-│ skills brainstorming ×1 ~4k · plugin-authoring ×1 ~3k  │
-│ /fueldeck usage for the full table                     │
+╭────────────────────────────────────────────────────────╮
+│ Σ 1.2M                              ◎92%  ↓14k ↑61k    │
+│ main            ▰▰▰▰▰▰▰▰  910k  ×48                    │
+│ Explore         ▰▰▱▱▱▱▱▱  220k  ×12                    │
+│ planner         ▰▱▱▱▱▱▱▱   70k  ×4                     │
+│ ☰ 16k/req                                              │
+│ everything-cla… ▰▰▰▰▰▰▰▰    8k  100◇ 17◈               │
+│ memory files    ▰▰▰▰▱▱▱▱    4k  10▤                    │
+│ context7        ▰▱▱▱▱▱▱▱    1k  2⎔                     │
+│ ◇ brainstorming ×1 ~4k · plugin-authoring ×1 ~3k       │
 ╰────────────────────────────────────────────────────────╯
 ```
 
+The whole pane uses glyphs in place of labels and hides counts that are zero. `/fueldeck legend` lists
+what each glyph means; set `labels` to `words` in `/config` for Flightdeck's labelled layout.
+
 | Row | Shows | From |
 | --- | --- | --- |
-| header | every token this session's model requests processed (input, output, cache reads and writes), and the cache hit rate: cache reads over all input | each request's `usage` at `turn.step` |
-| `in · out · cache` | the four counts the API reports, summed | the same |
-| loops | the top three consumers: the main loop and each subagent type (`Explore`, `planner`), the architect, and `other loops` (compactions, workflows) | the same, keyed by the loop that made the request |
-| every request | what each request carries before you type anything, by source: each plugin's skill listings and agent descriptions together, each MCP server's loaded tool schemas, your memory files (CLAUDE.md, rules) | the `/context` breakdown, estimated locally (`summary`), refreshed at session start, after each turn and on `/fueldeck usage` |
-| skills | each skill that ran this session, how often, and about how much text it put into the context | `skill.prompt`, at four characters a token |
+| `Σ` header | every token this session's model requests processed (input, output, cache reads and writes); `◎` the cache hit rate (cache reads over all input); `↓ ↑` fresh input and output | each request's `usage` at `turn.step` |
+| loops | the top three consumers, `×` their requests: the main loop and each subagent type (`Explore`, `planner`), the architect, and `other loops` (compactions, workflows) | the same, keyed by the loop that made the request |
+| `☰` every request | what each request carries before you type anything, by source: each plugin's skill listings and agent descriptions together, each MCP server's loaded tool schemas, your memory files (CLAUDE.md, rules) | the `/context` breakdown, estimated locally (`summary`), refreshed at session start, after each turn and on `/fueldeck usage` |
+| `◇` skills | each skill that ran this session, how often, and about how much text it put into the context | `skill.prompt`, at four characters a token |
 
 The panel appears after the first model request. The inline mini layout and the status line show the
 session total as `… tok`.
@@ -70,6 +71,7 @@ standing load, and every skill run.
 | --- | --- |
 | `/fueldeck` | open the pane |
 | `/fueldeck usage` | print the full token table |
+| `/fueldeck legend` | what each icon means |
 | `/fueldeck close` | close it |
 | `/fueldeck reset` | clear agents, checks, consults, log and the turn (cost, tokens, rate limits and compactions stay) |
 | `/fueldeck layout auto\|compact\|wide\|mini` | override the layout for this session |
@@ -80,7 +82,8 @@ standing load, and every skill run.
 
 The options are Flightdeck's, under `pluginConfigs["fueldeck"].options`; see
 [its README](../flightdeck/README.md#configure). `panels` defaults to
-`main,fuel,architect,gate,agents,loops,receipt,log`; leave `fuel` out to hide the panel.
+`main,fuel,architect,gate,agents,loops,receipt,log`; leave `fuel` out to hide the panel. Fueldeck adds
+`labels`: `icons` (the default) or `words`.
 
 ## What it can reach
 

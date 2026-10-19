@@ -61,6 +61,7 @@ import {
 } from './core'
 import type { Config, Panel } from './core'
 import { DEFAULT_FUEL, applyFuel, cacheHit, loadOf, noteSkill, normalizeFuel, ranked, sumOf, usageReport } from './fuel'
+import { ICON, LEGEND, fmtSpeedIcon, iconDetail, nonZero, receiptIcons } from './icons'
 import type { Load } from '../types'
 
 const PANE = 'fueldeck'
@@ -158,6 +159,16 @@ async function refreshStatus($: EngineInterface, cfg: Config) {
   const [u, a, g, cards, f] = await Promise.all([getUsage($), getArchitect($), getGate($), getCards($), getFuel($)])
   const running = cards.filter(c => c.status === 'running').length
   const s = gateSummary(g)
+  if (cfg.labels === 'icons') {
+    const shown = [
+      u.pct !== null ? `${ICON.context} ${Math.round(u.pct)}%` : null,
+      cards.length > 0 ? `${ICON.agent} ${running}/${cards.length}` : null,
+      a.consults.length > 0 || a.ids.length > 0 ? `${cfg.architectLabel.toLowerCase()} ${isAdvising(a) ? 'advising' : a.consults.length}` : null,
+      s.deny > 0 ? `${ICON.error} ${s.deny}` : null,
+      f.total.requests > 0 ? `${ICON.tokens} ${kTokens(sumOf(f.total))}` : null,
+    ].filter(Boolean)
+    return $.ui.status(shown.length > 0 ? shown.join('  ') : undefined)
+  }
   const parts = [
     u.pct !== null ? `ctx ${Math.round(u.pct)}%` : null,
     cards.length > 0 ? `agents ${running}/${cards.length}` : null,
@@ -245,8 +256,8 @@ export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'fueldeck',
-      description: 'Fueldeck, the live agent and token dashboard: open, close, reset, usage, or set the layout',
-      argumentHint: '[open|close|reset|usage|layout auto|compact|wide|mini]',
+      description: 'Fueldeck, the live agent and token dashboard: open, close, reset, usage, legend, or set the layout',
+      argumentHint: '[open|close|reset|usage|legend|layout auto|compact|wide|mini]',
     })
     await migrate($)
     // A host without usage (headless, an SDK host, a session not yet bound) just starts without it.
@@ -289,6 +300,7 @@ export const register: Register = (on, options) => {
       await refreshStatus($, cfg)
       return { text: 'Fueldeck reset.' }
     }
+    if (verb === 'legend') return { text: LEGEND }
     if (verb === 'usage') {
       await refreshLoad($)
       const [f, l, cost] = await Promise.all([getFuel($), getLoad($), costNow($)])
@@ -607,6 +619,7 @@ export const register: Register = (on, options) => {
     const running = cards.filter(c => c.status === 'running')
     const showArchitect = a.consults.length > 0 || a.ids.length > 0
     const motion = cfg.motion && hasClient
+    const icons = cfg.labels === 'icons'
     // A panel with nothing to show yet takes no room: most sessions never spawn an agent.
     const isEmpty: Record<Panel, boolean> = {
       main: false,
@@ -652,22 +665,32 @@ export const register: Register = (on, options) => {
       <Box flexDirection="column" borderStyle="round" borderColor={C.main} paddingX={1} width={w}>
         <Box justifyContent="space-between">
           <Text color={C.main} bold>
-            {modelName} · main
+            {icons ? modelName : `${modelName} · main`}
           </Text>
           <Text color={m.isRunning ? C.main : C.dim}>{m.isRunning ? '● working' : '○ idle'}</Text>
         </Box>
-        <Text wrap="truncate">
-          <Text dimColor>effort </Text>
-          <Text color={C.main}>{'▮'.repeat(effortN) + '▯'.repeat(4 - effortN)} </Text>
-          <Text color={C.main} bold>
-            {m.effort || '—'}
+        {icons ? (
+          <Text wrap="truncate">
+            <Text color={C.main}>{'▮'.repeat(effortN) + '▯'.repeat(4 - effortN)} </Text>
+            <Text color={C.main} bold>
+              {m.effort || '—'}
+            </Text>
+            <Text dimColor>{`${m.mode ? ` · ${m.mode}` : ''} · ${ICON.requests}${m.steps}`}</Text>
           </Text>
-          {m.mode ? <Text dimColor>{`   mode ${m.mode}`}</Text> : null}
-          <Text dimColor>{`   ${m.steps} req`}</Text>
-        </Text>
+        ) : (
+          <Text wrap="truncate">
+            <Text dimColor>effort </Text>
+            <Text color={C.main}>{'▮'.repeat(effortN) + '▯'.repeat(4 - effortN)} </Text>
+            <Text color={C.main} bold>
+              {m.effort || '—'}
+            </Text>
+            {m.mode ? <Text dimColor>{`   mode ${m.mode}`}</Text> : null}
+            <Text dimColor>{`   ${m.steps} req`}</Text>
+          </Text>
+        )}
         {ctxGauge ? (
           <Text wrap="truncate">
-            <Text dimColor>ctx </Text>
+            <Text dimColor>{icons ? `${ICON.context} ` : 'ctx '}</Text>
             <Text color={u.pct !== null && u.pct >= 80 ? C.warn : C.main}>{ctxGauge.on}</Text>
             <Text color={C.faint}>{ctxGauge.off}</Text>
             <Text bold>{` ${Math.round(u.pct ?? 0)}%`}</Text>
@@ -694,7 +717,7 @@ export const register: Register = (on, options) => {
             })}
           </Text>
         ) : null}
-        {m.speed ? <Text dimColor wrap="truncate">{`last req  ${fmtSpeed(m.speed)}`}</Text> : null}
+        {m.speed ? <Text dimColor wrap="truncate">{icons ? fmtSpeedIcon(m.speed) : `last req  ${fmtSpeed(m.speed)}`}</Text> : null}
       </Box>
     )
 
@@ -702,8 +725,8 @@ export const register: Register = (on, options) => {
     const whoRows = ranked(f.byWho).slice(0, 3)
     const loadRows = ld?.rows.slice(0, 3) ?? []
     const skillRuns = [...f.skills].sort((x, y) => y.tokens - x.tokens)
-    // Borders, header, counts and hint are 5 rows; the rankings add theirs.
-    const fuelRows = 5 + whoRows.length + (ld ? 1 + loadRows.length : 0) + (skillRuns.length > 0 ? 1 : 0)
+    // Borders, header, counts and hint are 5 rows (icons: borders and header, 3); the rankings add theirs.
+    const fuelRows = (icons ? 3 : 5) + whoRows.length + (ld ? 1 + loadRows.length : 0) + (skillRuns.length > 0 ? 1 : 0)
     const hit = cacheHit(f.total)
     // One row of a ranking: a fixed label, a bar against the ranking's largest, the tokens and a note.
     const fuelBar = (label: string, n: number, max: number, note: string, color: string) => {
@@ -720,7 +743,23 @@ export const register: Register = (on, options) => {
         </Box>
       )
     }
-    const fuelPanel = (w: number) => (
+    const fuelPanel = (w: number) =>
+      icons ? (
+        <Box flexDirection="column" borderStyle="round" borderColor={C.amber} paddingX={1} width={w}>
+          <Box justifyContent="space-between">
+            <Text color={C.amber} bold>{`${ICON.tokens} ${kTokens(sumOf(f.total))}`}</Text>
+            <Text dimColor wrap="truncate">
+              {`${hit !== null ? `${ICON.hit}${hit}%  ` : ''}${ICON.input}${kTokens(f.total.input)} ${ICON.output}${kTokens(f.total.output)}`}
+            </Text>
+          </Box>
+          {whoRows.map(x => fuelBar(x.key, sumOf(x.tokens), sumOf(whoRows[0]?.tokens ?? f.total), `${ICON.requests}${x.tokens.requests}`, C.amber))}
+          {ld ? <Text dimColor wrap="truncate">{`${ICON.load} ${kTokens(ld.sources)}/req`}</Text> : null}
+          {loadRows.map(x => fuelBar(x.label, x.tokens, loadRows[0]?.tokens ?? 0, iconDetail(x.detail), C.main))}
+          {skillRuns.length > 0 ? (
+            <Text wrap="truncate">{`${ICON.skill} ${skillRuns.map(s => `${s.name} ×${s.runs} ~${kTokens(s.tokens)}`).join(' · ')}`}</Text>
+          ) : null}
+        </Box>
+      ) : (
       <Box flexDirection="column" borderStyle="round" borderColor={C.amber} paddingX={1} width={w}>
         <Box justifyContent="space-between">
           <Text color={C.amber} bold>
@@ -804,9 +843,9 @@ export const register: Register = (on, options) => {
         <Box flexDirection="column" borderStyle="round" borderColor={C.gate} paddingX={1} width={w}>
           <Box justifyContent="space-between">
             <Text color={C.gate} bold>
-              {cfg.gateLabel} · permissions
+              {icons ? `${ICON.gate} ${cfg.gateLabel}` : `${cfg.gateLabel} · permissions`}
             </Text>
-            <Text dimColor>{`${s.total} checks`}</Text>
+            <Text dimColor>{icons ? `${ICON.requests}${s.total}` : `${s.total} checks`}</Text>
           </Box>
           <Box>
             {strip.length === 0 ? <Text color={C.faint}>no checks yet</Text> : null}
@@ -816,6 +855,15 @@ export const register: Register = (on, options) => {
               </Text>
             ))}
           </Box>
+          {icons ? (
+            // The colours are the legend: only the verdicts that happened, each as its square and count.
+            <Text wrap="truncate">
+              {s.rule > 0 ? <Text color={C.gate}>{`■${s.rule}  `}</Text> : null}
+              {s.cleared > 0 ? <Text color={C.cleared}>{`■${s.cleared}  `}</Text> : null}
+              {s.ask > 0 ? <Text color={C.amber}>{`■${s.ask}  `}</Text> : null}
+              {s.deny > 0 ? <Text color={C.warn}>{`${ICON.error}${s.deny}`}</Text> : null}
+            </Text>
+          ) : (
           <Text wrap="truncate">
             <Text color={C.gate}>■</Text>
             <Text dimColor>{` ${s.rule} allowed  `}</Text>
@@ -825,6 +873,7 @@ export const register: Register = (on, options) => {
             <Text color={s.deny > 0 ? C.warn : C.dim}>{`✗ ${s.deny} denied`}</Text>
             {w >= 80 && g.recent.some(c => c.inSubagent) ? <Text color={C.faint}>{'  dim: in subagents'}</Text> : null}
           </Text>
+          )}
           <Box columnGap={2}>
             {(['file', 'shell', 'other'] as const).map((b: Bucket) => {
               const tl = g.totals[b]
@@ -998,10 +1047,19 @@ export const register: Register = (on, options) => {
         <Box flexDirection="column" borderStyle="round" borderColor={C.main} borderDimColor={!m.isRunning && !isReview} paddingX={1} width={w}>
           {m.isRunning ? (
             <Box>
-              <Text color={C.main} wrap="truncate">{`◐ back to ${modelName.toLowerCase()} · turn `}</Text>
+              <Text color={C.main} wrap="truncate">{icons ? '◐ ' : `◐ back to ${modelName.toLowerCase()} · turn `}</Text>
               <Box flexShrink={0}>{clock('turn-clock', t.startedAt, null, C.main)}</Box>
-              {w >= 60 ? <Text dimColor wrap="truncate">{` · ${plural(t.edits, 'edit')} · ${plural(t.errors, 'error')}`}</Text> : null}
+              {icons ? (
+                <Text dimColor wrap="truncate">{nonZero([[ICON.edit, t.edits], [ICON.error, t.errors]]).replace(/^(?=.)/, ' · ')}</Text>
+              ) : w >= 60 ? (
+                <Text dimColor wrap="truncate">{` · ${plural(t.edits, 'edit')} · ${plural(t.errors, 'error')}`}</Text>
+              ) : null}
             </Box>
+          ) : r && icons ? (
+            <Text wrap="truncate">
+              <Text color={r.reason === 'answer' ? C.gate : C.warn}>{r.reason === 'answer' ? '✓ ' : '✗ '}</Text>
+              <Text>{receiptIcons(r)}</Text>
+            </Text>
           ) : r ? (
             <Text wrap="truncate">
               <Text color={r.reason === 'answer' ? C.gate : C.warn}>{r.reason === 'answer' ? '✓ ' : '✗ '}</Text>
@@ -1118,7 +1176,9 @@ export const register: Register = (on, options) => {
     const isMini = layout === 'mini' || (layout === 'auto' && e.props.placement === 'inline')
     if (isMini) {
       const live = [...cards.filter(c => c.status === 'running'), ...cards.filter(c => c.status !== 'running').reverse()].slice(0, 3)
-      const counts = ` ${s.rule} allowed · ${s.cleared} ${decider}${s.ask > 0 ? ` · ${s.ask} pending` : ''} · ${s.deny} denied`
+      const counts = icons
+        ? ` ${nonZero([['✓', s.rule], ['◆', s.cleared], ['…', s.ask], [ICON.error, s.deny]])}`
+        : ` ${s.rule} allowed · ${s.cleared} ${decider}${s.ask > 0 ? ` · ${s.ask} pending` : ''} · ${s.deny} denied`
       const strip = g.recent.slice(-Math.max(4, W - cfg.gateLabel.length - 1 - counts.length))
       const mg = u.pct !== null ? gauge(u.pct, 6) : null
       return (
@@ -1128,18 +1188,18 @@ export const register: Register = (on, options) => {
               {modelName}
             </Text>
             <Text color={m.isRunning ? C.main : C.dim}>{m.isRunning ? ' ● working' : ' ○ idle'}</Text>
-            {mg ? <Text dimColor> · ctx </Text> : null}
+            {mg ? <Text dimColor>{icons ? ` · ${ICON.context} ` : ' · ctx '}</Text> : null}
             {mg ? <Text color={(u.pct ?? 0) >= 80 ? C.warn : C.main}>{mg.on}</Text> : null}
             {mg ? <Text color={C.faint}>{mg.off}</Text> : null}
             {mg ? <Text>{` ${Math.round(u.pct ?? 0)}%`}</Text> : null}
             {u.compactions > 0 ? <Text color={C.amber}>{` ⟲${u.compactions}`}</Text> : null}
             {u.costUsd !== null ? <Text dimColor>{` · ${fmtUsd(u.costUsd)}`}</Text> : null}
-            {f.total.requests > 0 ? <Text color={C.amber}>{` · ${kTokens(sumOf(f.total))} tok`}</Text> : null}
+            {f.total.requests > 0 ? <Text color={C.amber}>{icons ? ` · ${ICON.tokens}${kTokens(sumOf(f.total))}` : ` · ${kTokens(sumOf(f.total))} tok`}</Text> : null}
             {showArchitect ? <Text color={C.arch}>{` · ${cfg.architectLabel.toLowerCase()} ${advising ? 'advising' : a.consults.length}`}</Text> : null}
           </Text>
           {strip.length > 0 ? (
             <Box>
-              <Text dimColor>{`${cfg.gateLabel.toLowerCase()} `}</Text>
+              <Text dimColor>{icons ? `${ICON.gate} ` : `${cfg.gateLabel.toLowerCase()} `}</Text>
               {strip.map(c => (
                 <Text color={verdictColor(c)} dimColor={c.inSubagent}>
                   {c.verdict === 'deny' ? '✗' : '■'}
@@ -1166,7 +1226,9 @@ export const register: Register = (on, options) => {
           {lp.length > 0 ? <Text dimColor>{`other loops ${lp.length} · ${lp.filter(l => isLoopActive(l, now)).length} active`}</Text> : null}
           {!m.isRunning && r ? (
             <Text dimColor wrap="truncate">
-              {`last turn ${fmtDuration(r.durationMs)} · ${plural(r.agents, 'agent')} · ${plural(r.edits, 'edit')} · ${plural(r.errors, 'error')}${r.costDelta !== null ? ` · +${fmtUsd(r.costDelta)}` : ''}`}
+              {icons
+                ? `${r.reason === 'answer' ? '✓' : '✗'} ${receiptIcons(r)}`
+                : `last turn ${fmtDuration(r.durationMs)} · ${plural(r.agents, 'agent')} · ${plural(r.edits, 'edit')} · ${plural(r.errors, 'error')}${r.costDelta !== null ? ` · +${fmtUsd(r.costDelta)}` : ''}`}
             </Text>
           ) : null}
         </Box>

@@ -105,6 +105,16 @@
       "description": "Show context, agents, consults and denials in the status line",
       "type": "boolean",
       "default": true
+    },
+    "labels": {
+      "title": "Labels",
+      "description": "icons: glyphs in place of labels and zero counts hidden (/fueldeck legend explains them); words: Flightdeck's labels",
+      "type": "string",
+      "options": [
+        "icons",
+        "words"
+      ],
+      "default": "icons"
     }
   }
 }

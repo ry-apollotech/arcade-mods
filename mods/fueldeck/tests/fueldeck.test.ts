@@ -239,7 +239,10 @@ const spawn = (subagentType: string, description: string) => ({
   fork: false,
 })
 
-test('a fresh session draws on every surface and width, empty panels hidden', async ($, on) => {
+// Flightdeck's own drawing tests read its labels, so they run with `labels: words`; tests/icons.test.ts covers the icons.
+const words = { options: { labels: 'words' } }
+
+test('a fresh session draws on every surface and width, empty panels hidden', words, async ($, on) => {
   engine(on)
   for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
     for (const cols of [40, 60, 86, 120]) {
@@ -253,7 +256,7 @@ test('a fresh session draws on every surface and width, empty panels hidden', as
   }
 })
 
-test('inline above the prompt, the pane is a summary of at most 8 rows', async ($, on) => {
+test('inline above the prompt, the pane is a summary of at most 8 rows', words, async ($, on) => {
   engine(on)
   let n = 0
   on('agent.spawn', () => ({ model: 'claude-sonnet-5-5', agentId: `m${++n}` }))
@@ -284,7 +287,7 @@ test('/clear starts the pane fresh', async ($, on) => {
   await ui.unmount()
 })
 
-test('colours come from the theme by default, raw hex only when asked', async ($, on) => {
+test('colours come from the theme by default, raw hex only when asked', words, async ($, on) => {
   engine(on)
   const ui = await $.ui.mount({ ...pane(64), surface: 'terminal' })
   const title = await ui.find({ text: /· main$/ })
@@ -292,7 +295,7 @@ test('colours come from the theme by default, raw hex only when asked', async ($
   await ui.unmount()
 })
 
-test('pastel keeps the fixed dark-terminal colours', { options: { palette: 'pastel' } }, async ($, on) => {
+test('pastel keeps the fixed dark-terminal colours', { options: { palette: 'pastel', labels: 'words' } }, async ($, on) => {
   engine(on)
   const ui = await $.ui.mount({ ...pane(64), surface: 'terminal' })
   expect((await ui.find({ text: /· main$/ }))?.props.color).toBe('#7dd3fc')
@@ -349,7 +352,7 @@ test('the server-side advisor is read from assistant rows: consulting, then on c
   await after.unmount()
 })
 
-test('the gate strip fills from checks and a row opens its redacted drill-down', async ($, on) => {
+test('the gate strip fills from checks and a row opens its redacted drill-down', words, async ($, on) => {
   engine(on)
   on('tool.check', (_$, e) => ({ decision: e.tool === 'Read' ? 'allow' : 'ask' }))
   await $.tool.check({ tool: 'Read', input: { file_path: '/a/b.ts' }, tool_use_id: 'k1' })
@@ -466,7 +469,7 @@ test('each rate-limit window shows the time to its reset where the main panel ha
   await narrow.unmount()
 })
 
-test("the main box shows the last request's time to first token and decode speed", async ($, on) => {
+test("the main box shows the last request's time to first token and decode speed", words, async ($, on) => {
   const clock = engine(on)
   // The model beneath: 800 ms to its first words, then 2 s more to stop after 120 tokens.
   on('turn.step', async function* () {

@@ -107,6 +107,8 @@ export type Config = {
   palette: Palette
   openOnStart: boolean
   statusLine: boolean
+  /** icons: glyphs in place of labels, zero counts hidden; words: Flightdeck's labels. */
+  labels: 'icons' | 'words'
 }
 
 const safeRegExp = (source: string, fallback: string) => {
@@ -140,6 +142,7 @@ export const parseConfig = (o: Readonly<Record<string, unknown>>): Config => {
     palette: str('palette', 'theme') === 'pastel' ? 'pastel' : 'theme',
     openOnStart: bool('openOnStart', true),
     statusLine: bool('statusLine', true),
+    labels: str('labels', 'icons') === 'words' ? 'words' : 'icons',
   }
 }
 

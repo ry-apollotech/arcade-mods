@@ -133,30 +133,35 @@ const step = async ($: Parameters<TestBody>[0]) => {
   await s.result
 }
 
-test('the fuel panel shows totals, the standing load and skill runs once there are requests', async ($, on) => {
-  engine(on)
-  on('skill.prompt', () => ({ text: 'x'.repeat(8_000) }))
-  const before = await $.ui.mount({ ...pane(80), surface: 'terminal' })
-  expect(await before.find({ text: /^fuel/ })).toBeUndefined() // no request yet: no panel
-  await before.unmount()
+// The same session drawn with each set of labels: what each must show, and what icons must not.
+const panelCases = [
+  { labels: 'icons', header: /^Σ 23k$/, shows: [/◎93%/, /↓500 ↑2k/, /^☰ 4k\/req$/, /memory files/, /2▤/, /^◇ tdd ×1 ~2k$/, /×1/], hides: [/fueldeck usage/, /tok/] },
+  { labels: 'words', header: /^fuel$/, shows: [/23k tok/, /hit 93%/, /every request ~4k/, /memory files/, /2 files/, /tdd ×1 ~2k/, /fueldeck usage/], hides: [] },
+] as const
 
-  await step($)
-  await $.skill.prompt({ skill: 'tdd', text: 'body', pluginName: 'everything-claude-code', source: 'plugin' })
-  await $.turn.complete({ answer: 'ok', durationMs: 10, isAborted: false, turnId: 'T1', reason: 'answer' })
+for (const c of panelCases) {
+  test(`the fuel panel shows totals, the standing load and skill runs (${c.labels})`, { options: { labels: c.labels } }, async ($, on) => {
+    engine(on)
+    on('skill.prompt', () => ({ text: 'x'.repeat(8_000) }))
+    const before = await $.ui.mount({ ...pane(80), surface: 'terminal' })
+    expect(await before.find({ text: c.header })).toBeUndefined() // no request yet: no panel
+    await before.unmount()
 
-  for (const surface of ['terminal', 'desktop'] as const) {
-    for (const cols of [48, 80, 130]) {
-      const ui = await $.ui.mount({ ...pane(cols), surface })
-      expect(await ui.find({ text: /^fuel/ })).toBeDefined()
-      expect(await ui.find({ text: /23k tok/ })).toBeDefined()
-      expect(await ui.find({ text: /hit 93%/ })).toBeDefined()
-      expect(await ui.find({ text: /every request ~4k/ })).toBeDefined()
-      expect(await ui.find({ text: /memory files/ })).toBeDefined()
-      expect(await ui.find({ text: /tdd ×1 ~2k/ })).toBeDefined()
-      await ui.unmount()
+    await step($)
+    await $.skill.prompt({ skill: 'tdd', text: 'body', pluginName: 'everything-claude-code', source: 'plugin' })
+    await $.turn.complete({ answer: 'ok', durationMs: 10, isAborted: false, turnId: 'T1', reason: 'answer' })
+
+    for (const surface of ['terminal', 'desktop'] as const) {
+      for (const cols of [48, 80, 130]) {
+        const ui = await $.ui.mount({ ...pane(cols), surface })
+        expect(await ui.find({ text: c.header })).toBeDefined()
+        for (const re of c.shows) expect(await ui.find({ text: re })).toBeDefined()
+        for (const re of c.hides) expect(await ui.find({ text: re })).toBeUndefined()
+        await ui.unmount()
+      }
     }
-  }
-})
+  })
+}
 
 test('/fueldeck usage prints the full report', async ($, on) => {
   engine(on)
