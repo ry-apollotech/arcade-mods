@@ -711,7 +711,7 @@ export const register: Register = (on, options) => {
       return (
         <Box>
           <Box width={16} flexShrink={0}>
-            <Text wrap="truncate">{label}</Text>
+            <Text wrap="truncate">{shorten(label, 15)}</Text>
           </Box>
           <Text color={color}>{bar.on}</Text>
           <Text color={C.faint}>{bar.off}</Text>
