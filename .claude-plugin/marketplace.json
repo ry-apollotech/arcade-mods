@@ -5,6 +5,7 @@
   "plugins": [
     { "name": "arcade-dash", "source": "./mods/arcade-dash", "description": "8-bit arcade dashboard: score band, compact tool rows, arcade spinner and branch status" },
     { "name": "flightdeck", "source": "./mods/flightdeck", "description": "Live agent dashboard by Stephen Casella (vendored, MIT). Upstream: https://github.com/scasella/claude-flightdeck" },
+    { "name": "fueldeck", "source": "./mods/fueldeck", "description": "Flightdeck plus a fuel panel: session tokens by loop and model, cache hits, and what each plugin, skill and MCP server costs in context" },
     { "name": "dailyred-dash", "source": "./mods/dailyred-dash", "description": "Daily Red in a pane: battle RED with today's team on the real FireRed engine (builds the game locally; see its README)" }
   ]
 }
