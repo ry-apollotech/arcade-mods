@@ -135,7 +135,7 @@ const step = async ($: Parameters<TestBody>[0]) => {
 
 // The same session drawn with each set of labels: what each must show, and what icons must not.
 const panelCases = [
-  { labels: 'icons', header: /^Σ 23k$/, shows: [/◎93%/, /↓500 ↑2k/, /^☰ 4k\/req$/, /memory files/, /2▤/, /^◇ tdd ×1 ~2k$/, /×1/], hides: [/fueldeck usage/, /tok/] },
+  { labels: 'icons', header: /^Σ 23k tokens$/, shows: [/◎ 93% cached · ↓500 in · ↑2k out/, /^☰ 4k loaded per request$/, /memory files/, /2 files/, /^◇ skills tdd ×1 ~2k$/, /1 req/], hides: [/fueldeck usage/] },
   { labels: 'words', header: /^fuel$/, shows: [/23k tok/, /hit 93%/, /every request ~4k/, /memory files/, /2 files/, /tdd ×1 ~2k/, /fueldeck usage/], hides: [] },
 ] as const
 

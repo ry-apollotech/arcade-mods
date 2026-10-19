@@ -24,20 +24,20 @@ Fueldeck, Flightdeck and arcade-dash all draw above the prompt, so enable one at
 
 ```
 ╭────────────────────────────────────────────────────────╮
-│ Σ 1.2M                              ◎92%  ↓14k ↑61k    │
-│ main            ▰▰▰▰▰▰▰▰  910k  ×48                    │
-│ Explore         ▰▰▱▱▱▱▱▱  220k  ×12                    │
-│ planner         ▰▱▱▱▱▱▱▱   70k  ×4                     │
-│ ☰ 16k/req                                              │
-│ everything-cla… ▰▰▰▰▰▰▰▰    8k  100◇ 17◈               │
-│ memory files    ▰▰▰▰▱▱▱▱    4k  10▤                    │
-│ context7        ▰▱▱▱▱▱▱▱    1k  2⎔                     │
-│ ◇ brainstorming ×1 ~4k · plugin-authoring ×1 ~3k       │
+│ Σ 1.2M tokens     ◎ 92% cached · ↓14k in · ↑61k out    │
+│ main            ▰▰▰▰▰▰▰▰  910k  48 req                 │
+│ Explore         ▰▰▱▱▱▱▱▱  220k  12 req                 │
+│ planner         ▰▱▱▱▱▱▱▱   70k  4 req                  │
+│ ☰ 16k loaded per request                               │
+│ everything-cla… ▰▰▰▰▰▰▰▰    8k  100 skills · 17 agents │
+│ memory files    ▰▰▰▰▱▱▱▱    4k  10 files               │
+│ context7        ▰▱▱▱▱▱▱▱    1k  2 tools                │
+│ ◇ skills brainstorming ×1 ~4k · plugin-authoring ×1 ~3k│
 ╰────────────────────────────────────────────────────────╯
 ```
 
-The whole pane uses glyphs in place of labels and hides counts that are zero. `/fueldeck legend` lists
-what each glyph means; set `labels` to `words` in `/config` for Flightdeck's labelled layout.
+The whole pane pairs a glyph with a short word, and hides counts that are zero. `/fueldeck legend`
+lists what each glyph means; set `labels` to `words` in `/config` for Flightdeck's fuller labels.
 
 | Row | Shows | From |
 | --- | --- | --- |

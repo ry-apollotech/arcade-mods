@@ -61,7 +61,7 @@ import {
 } from './core'
 import type { Config, Panel } from './core'
 import { DEFAULT_FUEL, applyFuel, cacheHit, loadOf, noteSkill, normalizeFuel, ranked, sumOf, usageReport } from './fuel'
-import { ICON, LEGEND, fmtSpeedIcon, iconDetail, nonZero, receiptIcons } from './icons'
+import { ICON, LEGEND, counts as countWords, fmtSpeedIcon, receiptIcons } from './icons'
 import type { Load } from '../types'
 
 const PANE = 'fueldeck'
@@ -161,11 +161,11 @@ async function refreshStatus($: EngineInterface, cfg: Config) {
   const s = gateSummary(g)
   if (cfg.labels === 'icons') {
     const shown = [
-      u.pct !== null ? `${ICON.context} ${Math.round(u.pct)}%` : null,
-      cards.length > 0 ? `${ICON.agent} ${running}/${cards.length}` : null,
+      u.pct !== null ? `${ICON.context} ctx ${Math.round(u.pct)}%` : null,
+      cards.length > 0 ? `agents ${running}/${cards.length}` : null,
       a.consults.length > 0 || a.ids.length > 0 ? `${cfg.architectLabel.toLowerCase()} ${isAdvising(a) ? 'advising' : a.consults.length}` : null,
-      s.deny > 0 ? `${ICON.error} ${s.deny}` : null,
-      f.total.requests > 0 ? `${ICON.tokens} ${kTokens(sumOf(f.total))}` : null,
+      s.deny > 0 ? `${ICON.error} ${s.deny} denied` : null,
+      f.total.requests > 0 ? `${ICON.tokens} ${kTokens(sumOf(f.total))} tok` : null,
     ].filter(Boolean)
     return $.ui.status(shown.length > 0 ? shown.join('  ') : undefined)
   }
@@ -675,7 +675,7 @@ export const register: Register = (on, options) => {
             <Text color={C.main} bold>
               {m.effort || '—'}
             </Text>
-            <Text dimColor>{`${m.mode ? ` · ${m.mode}` : ''} · ${ICON.requests}${m.steps}`}</Text>
+            <Text dimColor>{`${m.mode ? ` · ${m.mode}` : ''} · ${m.steps} req`}</Text>
           </Text>
         ) : (
           <Text wrap="truncate">
@@ -690,7 +690,7 @@ export const register: Register = (on, options) => {
         )}
         {ctxGauge ? (
           <Text wrap="truncate">
-            <Text dimColor>{icons ? `${ICON.context} ` : 'ctx '}</Text>
+            <Text dimColor>{icons ? `${ICON.context} ctx ` : 'ctx '}</Text>
             <Text color={u.pct !== null && u.pct >= 80 ? C.warn : C.main}>{ctxGauge.on}</Text>
             <Text color={C.faint}>{ctxGauge.off}</Text>
             <Text bold>{` ${Math.round(u.pct ?? 0)}%`}</Text>
@@ -747,16 +747,16 @@ export const register: Register = (on, options) => {
       icons ? (
         <Box flexDirection="column" borderStyle="round" borderColor={C.amber} paddingX={1} width={w}>
           <Box justifyContent="space-between">
-            <Text color={C.amber} bold>{`${ICON.tokens} ${kTokens(sumOf(f.total))}`}</Text>
+            <Text color={C.amber} bold>{`${ICON.tokens} ${kTokens(sumOf(f.total))} tokens`}</Text>
             <Text dimColor wrap="truncate">
-              {`${hit !== null ? `${ICON.hit}${hit}%  ` : ''}${ICON.input}${kTokens(f.total.input)} ${ICON.output}${kTokens(f.total.output)}`}
+              {`${hit !== null ? `${ICON.hit} ${hit}% cached · ` : ''}${ICON.input}${kTokens(f.total.input)} in · ${ICON.output}${kTokens(f.total.output)} out`}
             </Text>
           </Box>
-          {whoRows.map(x => fuelBar(x.key, sumOf(x.tokens), sumOf(whoRows[0]?.tokens ?? f.total), `${ICON.requests}${x.tokens.requests}`, C.amber))}
-          {ld ? <Text dimColor wrap="truncate">{`${ICON.load} ${kTokens(ld.sources)}/req`}</Text> : null}
-          {loadRows.map(x => fuelBar(x.label, x.tokens, loadRows[0]?.tokens ?? 0, iconDetail(x.detail), C.main))}
+          {whoRows.map(x => fuelBar(x.key, sumOf(x.tokens), sumOf(whoRows[0]?.tokens ?? f.total), `${x.tokens.requests} req`, C.amber))}
+          {ld ? <Text dimColor wrap="truncate">{`${ICON.load} ${kTokens(ld.sources)} loaded per request`}</Text> : null}
+          {loadRows.map(x => fuelBar(x.label, x.tokens, loadRows[0]?.tokens ?? 0, x.detail, C.main))}
           {skillRuns.length > 0 ? (
-            <Text wrap="truncate">{`${ICON.skill} ${skillRuns.map(s => `${s.name} ×${s.runs} ~${kTokens(s.tokens)}`).join(' · ')}`}</Text>
+            <Text wrap="truncate">{`${ICON.skill} skills ${skillRuns.map(s => `${s.name} ×${s.runs} ~${kTokens(s.tokens)}`).join(' · ')}`}</Text>
           ) : null}
         </Box>
       ) : (
@@ -845,7 +845,7 @@ export const register: Register = (on, options) => {
             <Text color={C.gate} bold>
               {icons ? `${ICON.gate} ${cfg.gateLabel}` : `${cfg.gateLabel} · permissions`}
             </Text>
-            <Text dimColor>{icons ? `${ICON.requests}${s.total}` : `${s.total} checks`}</Text>
+            <Text dimColor>{`${s.total} checks`}</Text>
           </Box>
           <Box>
             {strip.length === 0 ? <Text color={C.faint}>no checks yet</Text> : null}
@@ -856,12 +856,12 @@ export const register: Register = (on, options) => {
             ))}
           </Box>
           {icons ? (
-            // The colours are the legend: only the verdicts that happened, each as its square and count.
+            // Only the verdicts that happened, each as its square, count and one word.
             <Text wrap="truncate">
-              {s.rule > 0 ? <Text color={C.gate}>{`■${s.rule}  `}</Text> : null}
-              {s.cleared > 0 ? <Text color={C.cleared}>{`■${s.cleared}  `}</Text> : null}
-              {s.ask > 0 ? <Text color={C.amber}>{`■${s.ask}  `}</Text> : null}
-              {s.deny > 0 ? <Text color={C.warn}>{`${ICON.error}${s.deny}`}</Text> : null}
+              {s.rule > 0 ? <Text color={C.gate}>{`■ ${s.rule} allowed  `}</Text> : null}
+              {s.cleared > 0 ? <Text color={C.cleared}>{`■ ${s.cleared} ${decider}  `}</Text> : null}
+              {s.ask > 0 ? <Text color={C.amber}>{`■ ${s.ask} pending  `}</Text> : null}
+              {s.deny > 0 ? <Text color={C.warn}>{`${ICON.error} ${s.deny} denied`}</Text> : null}
             </Text>
           ) : (
           <Text wrap="truncate">
@@ -883,8 +883,7 @@ export const register: Register = (on, options) => {
                   key={`gate-${b}`}
                   plain
                   hotkey={b[0]}
-                  // The hotkey letter already names the family (f file, s shell, o other): icons keep just the count.
-                  label={`${icons ? n : `${b} ${n}`}${open === b ? ' ▾' : ''}`}
+                  label={`${b} ${n}${open === b ? ' ▾' : ''}`}
                   dimColor={n === 0}
                   onPress={() => update($, view, x => ({ ...normalize(DEFAULT_VIEW, x), gateOpen: normalize(DEFAULT_VIEW, x).gateOpen === b ? null : b }))}
                 />
@@ -1048,10 +1047,10 @@ export const register: Register = (on, options) => {
         <Box flexDirection="column" borderStyle="round" borderColor={C.main} borderDimColor={!m.isRunning && !isReview} paddingX={1} width={w}>
           {m.isRunning ? (
             <Box>
-              <Text color={C.main} wrap="truncate">{icons ? '◐ ' : `◐ back to ${modelName.toLowerCase()} · turn `}</Text>
+              <Text color={C.main} wrap="truncate">{icons ? '◐ turn ' : `◐ back to ${modelName.toLowerCase()} · turn `}</Text>
               <Box flexShrink={0}>{clock('turn-clock', t.startedAt, null, C.main)}</Box>
               {icons ? (
-                <Text dimColor wrap="truncate">{nonZero([[ICON.edit, t.edits], [ICON.error, t.errors]]).replace(/^(?=.)/, ' · ')}</Text>
+                <Text dimColor wrap="truncate">{countWords([[t.edits, 'edit'], [t.errors, 'error']]).replace(/^(?=.)/, ' · ')}</Text>
               ) : w >= 60 ? (
                 <Text dimColor wrap="truncate">{` · ${plural(t.edits, 'edit')} · ${plural(t.errors, 'error')}`}</Text>
               ) : null}
@@ -1184,7 +1183,7 @@ export const register: Register = (on, options) => {
     if (isMini) {
       const live = [...cards.filter(c => c.status === 'running'), ...cards.filter(c => c.status !== 'running').reverse()].slice(0, 3)
       const counts = icons
-        ? ` ${nonZero([['✓', s.rule], ['◆', s.cleared], ['…', s.ask], [ICON.error, s.deny]])}`
+        ? ` ${countWords([[s.rule, 'allowed'], [s.cleared, decider], [s.ask, 'pending'], [s.deny, 'denied']], false)}`
         : ` ${s.rule} allowed · ${s.cleared} ${decider}${s.ask > 0 ? ` · ${s.ask} pending` : ''} · ${s.deny} denied`
       const strip = g.recent.slice(-Math.max(4, W - cfg.gateLabel.length - 1 - counts.length))
       const mg = u.pct !== null ? gauge(u.pct, 6) : null
@@ -1195,18 +1194,18 @@ export const register: Register = (on, options) => {
               {modelName}
             </Text>
             <Text color={m.isRunning ? C.main : C.dim}>{m.isRunning ? ' ● working' : ' ○ idle'}</Text>
-            {mg ? <Text dimColor>{icons ? ` · ${ICON.context} ` : ' · ctx '}</Text> : null}
+            {mg ? <Text dimColor>{icons ? ` · ${ICON.context} ctx ` : ' · ctx '}</Text> : null}
             {mg ? <Text color={(u.pct ?? 0) >= 80 ? C.warn : C.main}>{mg.on}</Text> : null}
             {mg ? <Text color={C.faint}>{mg.off}</Text> : null}
             {mg ? <Text>{` ${Math.round(u.pct ?? 0)}%`}</Text> : null}
             {u.compactions > 0 ? <Text color={C.amber}>{` ⟲${u.compactions}`}</Text> : null}
             {u.costUsd !== null ? <Text dimColor>{` · ${fmtUsd(u.costUsd)}`}</Text> : null}
-            {f.total.requests > 0 ? <Text color={C.amber}>{icons ? ` · ${ICON.tokens}${kTokens(sumOf(f.total))}` : ` · ${kTokens(sumOf(f.total))} tok`}</Text> : null}
+            {f.total.requests > 0 ? <Text color={C.amber}>{icons ? ` · ${ICON.tokens} ${kTokens(sumOf(f.total))} tok` : ` · ${kTokens(sumOf(f.total))} tok`}</Text> : null}
             {showArchitect ? <Text color={C.arch}>{` · ${cfg.architectLabel.toLowerCase()} ${advising ? 'advising' : a.consults.length}`}</Text> : null}
           </Text>
           {strip.length > 0 ? (
             <Box>
-              <Text dimColor>{icons ? `${ICON.gate} ` : `${cfg.gateLabel.toLowerCase()} `}</Text>
+              <Text dimColor>{icons ? `${ICON.gate} ${cfg.gateLabel.toLowerCase()} ` : `${cfg.gateLabel.toLowerCase()} `}</Text>
               {strip.map(c => (
                 <Text color={verdictColor(c)} dimColor={c.inSubagent}>
                   {c.verdict === 'deny' ? '✗' : '■'}
