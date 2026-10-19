@@ -47,12 +47,22 @@ class BattleTest(unittest.TestCase):
         self.assertTrue(any(p['active'] for p in first['party']))
         self.assertTrue(all(1 <= m['slot'] <= 4 for m in first['player']['moves']))
 
+    def test_reports_held_items(self):
+        # RED leads with PIKACHU holding a LIGHT BALL (src/dailyred_boss.c); every team member holds one item.
+        first = next(s for s in run(3600) if s['phase'] == 'battle' and s['menu'] == 'action')
+        self.assertEqual(first['enemy']['item'], 'LIGHT BALL')
+        self.assertTrue(first['player']['item'])
+        self.assertTrue(all(p['item'] for p in first['party']))
+        active = next(p for p in first['party'] if p['active'])
+        self.assertEqual(active['item'], first['player']['item'])
+
 
 @unittest.skipUnless((HOME / 'dailyred.gba').exists(), 'run scripts/setup.sh first')
 class StatusTest(unittest.TestCase):
     def test_a_sleeping_foe_shows_slp(self):
-        # Seed 65's lead VICTREEBEL has SLEEP POWDER in slot 4; with this run's random numbers it hits.
-        states = run(5200, commands='1 move 4\n', seed=65, daily=False)
+        # Seed 81's lead VICTREEBEL has SLEEP POWDER in slot 4; with this run's random numbers it hits.
+        # (Seed 65 was, until final-evolutions.patch changed which teams each seed draws.)
+        states = run(5200, commands='1 move 4\n', seed=81, daily=False)
         first = next(s for s in states if s['menu'] == 'action')
         self.assertEqual(first['enemy']['status'], '')
         self.assertFalse(first['enemy']['confused'])
