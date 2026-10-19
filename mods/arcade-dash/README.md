@@ -41,7 +41,7 @@ built-in Pikachu.
 
 | | Size |
 |---|---|
-| Height | **16 pixels** is ideal (8 terminal rows). Up to **20** works; the band grows taller. |
+| Height | The score band shows up to **20 pixels** (16 is ideal, 8 terminal rows). The `/pet` pane shows up to **64 pixels** (32 rows), a whole Game Boy Advance sprite, so GBA-era art shows 1:1. |
 | Width | Up to about **24 pixels**. |
 | Scale | 1:1, or a clean whole-number upscale (2×, 5×, 10×…). It's detected and undone with no loss. Uneven or blurry scaling gets shrunk instead and loses detail. |
 

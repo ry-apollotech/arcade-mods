@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { decodeGif } from '../hooks/gif'
-import { base64ToBytes, detectScale, gifToSprite, gifsToPet } from '../hooks/petloader'
+import { base64ToBytes, detectScale, gifToSprite, gifToSprites, gifsToPet } from '../hooks/petloader'
 
 // 2 frames drawn 4x on a transparent background: a 5x4 red shape with black eyes and a yellow
 // mouth; only the last row differs between frames, and frame 2 reaches one pixel further right.
@@ -56,6 +56,21 @@ describe('turning a GIF into a pet', () => {
   })
   test('keeps the GIF\'s frame delays on the sprite', () => {
     expect(gifToSprite(base64ToBytes(TINY_GIF)).delays).toEqual([250, 250])
+  })
+  test('makes a small sprite for the score band and a larger one for the pet pane', () => {
+    // REST_GIF is 20 pixels tall at native size: a 10-pixel band copy, the 20-pixel original for the pane.
+    const pet = gifsToPet(base64ToBytes(TINY_GIF), base64ToBytes(REST_GIF), 10, 20)
+    expect(pet.lie.frames[0]!.length).toBe(10)
+    expect(pet.large!.lie.frames[0]!.length).toBe(20)
+    expect(pet.large!.walk.delays).toEqual([250, 250])
+  })
+  test('keeps a GBA-sized sprite (up to 64 pixels tall) unshrunk in the pet pane', () => {
+    // An 8x60 red block in a white 1-pixel border.
+    const TALL_GIF = 'R0lGODlhCgA+APf/AP8AAP///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////wD/ACH/C05FVFNDQVBFMi4wAwEAAAAh+QQFBAACACwAAAAACgA+AIH/AAD///8A/wD///8IZwADCBxIMACAgwgPCkyYcCFDhQYfAnD4kCJDiw0jVtR4kWNGiRM9IsQ4UiREkCRPSkwZEqXJlitfspwps6bLmzFxbtTZkefHnEB3Bu059KfQo0SRGk3KdKnTkj6hFpWqlGrTkgUJBgQAOw=='
+    const { band, pane } = gifToSprites(base64ToBytes(TALL_GIF))
+    expect(pane.frames[0]!.length).toBe(60)
+    expect(pane.frames[0]![0]!.length).toBe(8)
+    expect(band.frames[0]!.length).toBe(20)
   })
   test('builds a pet from a walking and a resting GIF', () => {
     const pet = gifsToPet(base64ToBytes(TINY_GIF), base64ToBytes(REST_GIF))

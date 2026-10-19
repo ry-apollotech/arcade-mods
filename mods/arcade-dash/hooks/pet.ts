@@ -1,6 +1,6 @@
 // Pixel pet drawn with half blocks: each terminal cell holds two square pixels (top and bottom).
 import { pikachu } from './pets/pikachu'
-import type { Pet } from './pets/types'
+import type { Pet, PetSprite } from './pets/types'
 import { nightPixel, sceneryPixel } from './scenery'
 
 const DEFAULT = 0x01000000
@@ -44,14 +44,26 @@ export function currentPet(): Pet {
 
 export type PetSizes = { paneColumns: number; petRows: number; bandRows: number; bandColumns: number }
 
-export function petSizes(pet: Pet = current): PetSizes {
-  const width = Math.max(pet.walk.frames[0]![0]!.length, pet.lie.frames[0]![0]!.length)
-  const height = Math.max(pet.walk.frames[0]!.length, pet.lie.frames[0]!.length)
+// The sprites one place draws: the score band the small pair, the pet pane the large pair when there is one.
+function spritesFor(pet: Pet, forBand: boolean): { walk: PetSprite; lie: PetSprite } {
+  return forBand ? pet : (pet.large ?? pet)
+}
+
+function extent(pair: { walk: PetSprite; lie: PetSprite }): { width: number; height: number } {
   return {
-    paneColumns: width + 6, // the dock's width: the widest frame and a little room
-    petRows: Math.ceil((height + 1) / 2) + 1, // the pane: tallest frame plus a floor row, two pixels a row
-    bandRows: Math.ceil(height / 2), // the score band's corner, no floor line
-    bandColumns: width + 1 + Z_ROOM,
+    width: Math.max(pair.walk.frames[0]![0]!.length, pair.lie.frames[0]![0]!.length),
+    height: Math.max(pair.walk.frames[0]!.length, pair.lie.frames[0]!.length),
+  }
+}
+
+export function petSizes(pet: Pet = current): PetSizes {
+  const pane = extent(spritesFor(pet, false))
+  const band = extent(spritesFor(pet, true))
+  return {
+    paneColumns: pane.width + 6, // the dock's width: the widest frame and a little room
+    petRows: Math.ceil((pane.height + 1) / 2) + 1, // the pane: tallest frame plus a floor row, two pixels a row
+    bandRows: Math.ceil(band.height / 2), // the score band's corner, no floor line
+    bandColumns: band.width + 1 + Z_ROOM,
   }
 }
 
@@ -71,7 +83,7 @@ function toBase64(bytes: Uint8Array): string {
 
 export function petFrame(
   tick: number, isAwake: boolean, columns: number, rows = petSizes().petRows, withGround = true, scenery = false,
-  ms = tick * STEP_MS,
+  ms = tick * STEP_MS, forBand = false,
 ): PetFrame {
   const height = rows * 2
   // With scenery on, a day scene (running) or a night scene (resting) fills every pixel the pet leaves empty.
@@ -83,7 +95,8 @@ export function petFrame(
 
   if (withGround) for (let x = 0; x < columns; x++) pixels[height - 1]![x] = x % 2 === 0 ? GROUND : null
 
-  const sprite = isAwake ? current.walk : current.lie
+  const pair = spritesFor(current, forBand)
+  const sprite = isAwake ? pair.walk : pair.lie
   // A GIF walk plays at its own speed; the built-in pet and every rest pose step with the tick.
   const frameIndex = isAwake
     ? (sprite.delays ? frameAt(sprite.delays, ms) : tick % sprite.frames.length)

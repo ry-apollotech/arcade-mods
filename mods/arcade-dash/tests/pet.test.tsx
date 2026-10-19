@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 
 import { currentPet, petFrame, petSizes, setPet } from '../hooks/pet'
+import { base64ToBytes } from '../hooks/petloader'
 
 const WIDE = 80
 
@@ -48,6 +49,33 @@ test('a GIF pet plays each walking frame for its own delay', () => {
     expect(at(399)).toBe(second)
     expect(at(400)).toBe(first) // 400 ms is one full loop
     expect(at(450)).toBe(first)
+  } finally {
+    setPet(builtIn)
+  }
+})
+
+test('the pet pane draws the larger sprite while the score band keeps the small one', () => {
+  const builtIn = currentPet()
+  const small = { frames: [['a'.repeat(4)]], palette: { a: 0xff0000 } } // 4 wide, 1 tall
+  const big = { frames: Array.from({ length: 1 }, () => Array.from({ length: 40 }, () => 'a'.repeat(30))), palette: { a: 0xff0000 } }
+  setPet({ walk: small, lie: small, large: { walk: big, lie: big } })
+  try {
+    const sizes = petSizes()
+    expect(sizes.petRows).toBe(Math.ceil((40 + 1) / 2) + 1) // the pane fits the 40-pixel sprite
+    expect(sizes.paneColumns).toBe(30 + 6)
+    expect(sizes.bandRows).toBe(1) // the band fits the 1-pixel sprite
+    // Cells holding a red half block: each cell is three 32-bit words, the character then its colors.
+    const red = (cells: string) => {
+      const words = new Uint32Array(base64ToBytes(cells).buffer)
+      let n = 0
+      for (let i = 0; i < words.length; i += 3) if (words[i] !== 0x20 && (words[i + 1] === 0xff0000 || words[i + 2] === 0xff0000)) n++
+      return n
+    }
+    const pane = petFrame(0, true, WIDE)
+    const band = petFrame(0, true, WIDE, sizes.bandRows, false, false, 0, true)
+    // The 30x40 sprite, two pixels a cell; standing on the 1-pixel floor it starts on an odd row, so it spans 21 rows.
+    expect(red(pane.cells)).toBe(30 * 21)
+    expect(red(band.cells)).toBe(4) // the 4x1 sprite
   } finally {
     setPet(builtIn)
   }

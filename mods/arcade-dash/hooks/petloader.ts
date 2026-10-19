@@ -119,14 +119,34 @@ function encode(grids: Grid[]): PetSprite {
 // 2 seconds; much more and the worker misses its 5-second heartbeat and the whole mod is unloaded.
 export const MAX_GIF_PIXELS = 25_000_000
 
-export function gifToSprite(bytes: Uint8Array, maxHeight = MAX_PET_HEIGHT): PetSprite {
-  const image = decodeGif(bytes, MAX_GIF_PIXELS)
-  let grids = crop(toGrids(image))
+// The pet pane has room for a taller pet than the score band, so it gets its own, more detailed copy:
+// up to 64 pixels, a whole GBA sprite, so Game Boy Advance era art shows 1:1.
+export const MAX_PANE_PET_HEIGHT = 64
+
+function sized(grids: Grid[], delays: number[], maxHeight: number): PetSprite {
   const height = grids[0]!.length
-  if (height > maxHeight) grids = grids.map(g => shrink(g, height / maxHeight))
-  return { ...encode(grids), delays: image.delays }
+  const fitted = height > maxHeight ? grids.map(g => shrink(g, height / maxHeight)) : grids
+  return { ...encode(fitted), delays }
 }
 
-export function gifsToPet(walk: Uint8Array, rest: Uint8Array): Pet {
-  return { walk: gifToSprite(walk), lie: gifToSprite(rest) }
+// Decodes once and fits the pet twice: to the score band's height and to the pet pane's.
+export function gifToSprites(
+  bytes: Uint8Array, bandHeight = MAX_PET_HEIGHT, paneHeight = MAX_PANE_PET_HEIGHT,
+): { band: PetSprite; pane: PetSprite } {
+  const image = decodeGif(bytes, MAX_GIF_PIXELS)
+  const grids = crop(toGrids(image))
+  return { band: sized(grids, image.delays, bandHeight), pane: sized(grids, image.delays, paneHeight) }
+}
+
+export function gifToSprite(bytes: Uint8Array, maxHeight = MAX_PET_HEIGHT): PetSprite {
+  const image = decodeGif(bytes, MAX_GIF_PIXELS)
+  return sized(crop(toGrids(image)), image.delays, maxHeight)
+}
+
+export function gifsToPet(
+  walk: Uint8Array, rest: Uint8Array, bandHeight = MAX_PET_HEIGHT, paneHeight = MAX_PANE_PET_HEIGHT,
+): Pet {
+  const w = gifToSprites(walk, bandHeight, paneHeight)
+  const r = gifToSprites(rest, bandHeight, paneHeight)
+  return { walk: w.band, lie: r.band, large: { walk: w.pane, lie: r.pane } }
 }

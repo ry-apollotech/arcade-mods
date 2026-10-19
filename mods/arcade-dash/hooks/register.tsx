@@ -14,7 +14,7 @@ import {
   toolTag,
 } from './arcade'
 import { DEFAULT_PET, STEP_MS, petFrame, petSizes, setPet } from './pet'
-import { base64ToBytes, gifToSprite } from './petloader'
+import { base64ToBytes, gifToSprites } from './petloader'
 
 const score = atom({ plugin: 'arcade-dash', key: 'score' } as const, null)
 const git = atom({ plugin: 'arcade-dash', key: 'git' } as const, null)
@@ -105,18 +105,19 @@ async function loadCustomPet($: EngineInterface): Promise<string> {
       $.fs.read(restPath, { as: 'bytes' }),
     ])
     // One file at a time, handing control back in between, so each gets the worker's full heartbeat window.
-    const sprite = async (name: string, base64: string) => {
+    const sprites = async (name: string, base64: string) => {
       await $.clock.now()
       try {
-        return gifToSprite(base64ToBytes(base64))
+        return gifToSprites(base64ToBytes(base64))
       } catch (error) {
         throw new Error(`${name}: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
-    const pet = { walk: await sprite('walk.gif', walk.base64), lie: await sprite('rest.gif', rest.base64) }
-    setPet(pet)
+    const w = await sprites('walk.gif', walk.base64)
+    const r = await sprites('rest.gif', rest.base64)
+    setPet({ walk: w.band, lie: r.band, large: { walk: w.pane, lie: r.pane } })
     const size = (frames: string[][]) => `${frames[0]![0]!.length}x${frames[0]!.length}`
-    return `Loaded your pet from ${complete.folder.label}: walking ${pet.walk.frames.length} frame(s) at ${size(pet.walk.frames)}, resting ${size(pet.lie.frames)}.`
+    return `Loaded your pet from ${complete.folder.label}: walking ${w.pane.frames.length} frame(s) at ${size(w.pane.frames)} in the pet pane, ${size(w.band.frames)} in the score band; resting ${size(r.pane.frames)}.`
   } catch (error) {
     setPet(DEFAULT_PET)
     return `Could not load your pet (${error instanceof Error ? error.message : String(error)}); using the built-in pet.`
@@ -170,7 +171,7 @@ export const register: Register = on => {
       }
       if (bandRequestId !== null) {
         const { bandColumns, bandRows } = petSizes()
-        const frame = petFrame(petTick, petAwake, bandColumns, bandRows, false, true, petMs)
+        const frame = petFrame(petTick, petAwake, bandColumns, bandRows, false, true, petMs, true)
         if (frame.cells !== bandCells) {
           bandCells = frame.cells
           void $.ui.blit({ requestId: bandRequestId, key: 'band-pet', ...frame }).catch(() => {})
@@ -312,7 +313,7 @@ export const register: Register = on => {
     }
     const { Raster } = $.ui.resolve(e)
     bandRequestId = e.requestId
-    const frame = petFrame(petTick, awake, bandColumns, bandRows, false, true, petMs)
+    const frame = petFrame(petTick, awake, bandColumns, bandRows, false, true, petMs, true)
     bandCells = frame.cells
     return (
       <Box borderStyle="single" borderColor={COLORS.cyan} paddingX={1} columnGap={2}>
