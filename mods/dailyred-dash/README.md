@@ -5,10 +5,16 @@ level-100 Pokémon against RED at the top of the mountain, on the real Pokémon 
 drawn as readable terminal text. Your first battle each day is the day's shared team; every retry
 brings a new team. Your attempts and day streak are kept.
 
-One change to Daily Red: your team gets competitive movesets instead of four random moves. Each
-Pokémon has an attack of its own type, attacks that cover other types, and one support move (a boost,
-recovery or status) when one suits it. The change is `patches/competitive-moves.patch`, applied by
-setup, so your daily team differs from the website's for the same day.
+Two changes to Daily Red, so your daily team differs from the website's for the same day:
+
+- **Competitive movesets** instead of four random moves. Each Pokémon has an attack of its own type,
+  attacks that cover other types, and one support move (a boost, recovery or status) when one suits
+  it. `patches/competitive-moves.patch`.
+- **Final evolutions only.** Every team member is the last of its line (Charizard, never Charmander
+  or Charmeleon) or a Pokémon that never evolves (Tauros, the legendaries).
+  `patches/final-evolutions.patch`.
+
+Setup applies both; running `/dailyred setup` again after an update rebuilds the game with them.
 
 ## Set up (once)
 

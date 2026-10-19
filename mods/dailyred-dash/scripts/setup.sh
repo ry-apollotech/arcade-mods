@@ -90,6 +90,13 @@ if ! grep -q "AssignCompetitiveMoves" "$GAME/src/dailyred_team.c"; then
   rm -f "$GAME/pokefirered_modern.gba"
 fi
 
+# 4c. And final evolutions only: no Pokemon that can still evolve. Applied after 4b, which it builds on.
+if ! grep -q "IsFinalEvolution" "$GAME/src/dailyred_team.c"; then
+  step "Applying final evolutions only"
+  patch -s -p1 -d "$GAME" < "$MOD/patches/final-evolutions.patch"
+  rm -f "$GAME/pokefirered_modern.gba"
+fi
+
 # 5. The ROM. Static libpng on Linux needs -lm, so the two tools that link it are built first.
 if [ ! -f "$GAME/pokefirered_modern.gba" ]; then
   for tool in gbagfx rsfont; do
