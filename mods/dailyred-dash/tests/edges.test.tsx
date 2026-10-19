@@ -153,6 +153,27 @@ describe('keys that always lead somewhere', () => {
     expect(await ui.find({ type: 'Button', text: /SOLARBEAM/ })).toBeDefined()
     await ui.unmount()
   })
+
+  test('held items show beside both Pokémon and in the party; none, nothing', async ($, on) => {
+    const clock = mock.clock(on)
+    const items = {
+      ...atAction,
+      player: { ...atAction.player!, item: 'MIRACLE SEED' },
+      enemy: { ...atAction.enemy!, item: 'CHARCOAL' },
+      party: atAction.party.map(p => (p.slot === 3 ? { ...p, item: 'LEFTOVERS' } : { ...p, item: '' })),
+    }
+    hangingRunner(on, [JSON.stringify(items)], { spawned: [], ended: 0 })
+    engine(on)
+    await $.command.run({ command: 'dailyred' })
+    await clock.advance(0)
+    const ui = await pane($)
+    expect(await ui.find({ type: 'Text', text: /^ @CHARCOAL$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^ @MIRACLE SEED$/ })).toBeDefined()
+    await ui.press({ key: 'key-s' })
+    expect(await ui.find({ type: 'Button', text: /ALAKAZAM @LEFTOVERS 251\/251/ })).toBeDefined()
+    expect(await ui.find({ text: /BLASTOISE @/ })).toBeUndefined() // no item: no marker
+    await ui.unmount()
+  })
 })
 
 describe('demo mode', () => {

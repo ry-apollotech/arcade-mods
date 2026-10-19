@@ -13,7 +13,7 @@ NAMES = [
     'gBattleMons', 'gBattlersCount', 'gBattleTypeFlags', 'gDisplayedStringBattle', 'gBattlerPartyIndexes',
     'gPlayerParty', 'gEnemyParty', 'gPlayerPartyCount', 'gEnemyPartyCount', 'gBattleOutcome',
     'gActionSelectionCursor', 'gMoveSelectionCursor', 'gBattlerControllerFuncs', 'gPartyMenu',
-    'gSpeciesNames', 'gMoveNames', 'gBattleMoves', 'gTypeNames', 'gTypeEffectiveness',
+    'gSpeciesNames', 'gMoveNames', 'gBattleMoves', 'gTypeNames', 'gTypeEffectiveness', 'gItems',
     'gDailyRedRomConfig', 'sStatus',
     'HandleInputChooseAction', 'HandleInputChooseMove', 'HandleInputChooseTarget',
     'OpenPartyMenuToChooseMon', 'WaitForMonSelection',

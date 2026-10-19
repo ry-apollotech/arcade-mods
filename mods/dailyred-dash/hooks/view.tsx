@@ -30,11 +30,17 @@ function badges(els: El, mon: Mon) {
   return shown.map(b => [' ', <Text key={`badge-${b}`} bold inverse color={BADGE_COLORS[b]}>{b}</Text>])
 }
 
+// The held item after the name, as the game's party screen marks it: ` @CHARCOAL`; nothing without one.
+function heldItem(els: El, item: string | undefined) {
+  const { Text } = els
+  return item ? <Text dimColor>{` @${item}`}</Text> : null
+}
+
 function monLine(els: El, mon: Mon, owner: string) {
   const { Text } = els
   return (
     <Text>
-      <Text bold>{owner}{mon.name} Lv{mon.level}</Text>{badges(els, mon)}  HP <Text color={hpColor(mon)}>{hpBar(mon)}</Text> {mon.hp}/{mon.maxHp}
+      <Text bold>{owner}{mon.name} Lv{mon.level}</Text>{heldItem(els, mon.item)}{badges(els, mon)}  HP <Text color={hpColor(mon)}>{hpBar(mon)}</Text> {mon.hp}/{mon.maxHp}
     </Text>
   )
 }
@@ -71,9 +77,12 @@ function party(els: El, state: BattleState, onKey: (k: string) => void) {
   const { Box, Text, Button } = els
   return (
     <Box flexDirection="row" flexWrap="wrap" columnGap={3}>
-      {state.party.map(p => (p.hp > 0 && !p.active
-        ? <Button key={`party-${p.slot}`} plain hotkey={String(p.slot)} label={`${p.name} ${p.hp}/${p.maxHp}${p.status ? ` ${p.status}` : ''}`} onPress={() => onKey(String(p.slot))} />
-        : <Text key={`party-${p.slot}`} dimColor>{p.slot}: {p.name} {p.hp}/{p.maxHp}{p.status ? ` ${p.status}` : ''}{p.active ? ' (out)' : ''}</Text>))}
+      {state.party.map(p => {
+        const item = p.item ? ` @${p.item}` : ''
+        return p.hp > 0 && !p.active
+          ? <Button key={`party-${p.slot}`} plain hotkey={String(p.slot)} label={`${p.name}${item} ${p.hp}/${p.maxHp}${p.status ? ` ${p.status}` : ''}`} onPress={() => onKey(String(p.slot))} />
+          : <Text key={`party-${p.slot}`} dimColor>{p.slot}: {p.name}{item} {p.hp}/{p.maxHp}{p.status ? ` ${p.status}` : ''}{p.active ? ' (out)' : ''}</Text>
+      })}
     </Box>
   )
 }

@@ -26,6 +26,7 @@ static const struct {
 	{ "gBattleMoves", offsetof(struct Symbols, battleMoves) },
 	{ "gTypeNames", offsetof(struct Symbols, typeNames) },
 	{ "gTypeEffectiveness", offsetof(struct Symbols, typeEffectiveness) },
+	{ "gItems", offsetof(struct Symbols, items) },
 	{ "gDailyRedRomConfig", offsetof(struct Symbols, romConfig) },
 	{ "sStatus", offsetof(struct Symbols, status) },
 	{ "HandleInputChooseAction", offsetof(struct Symbols, chooseAction) },

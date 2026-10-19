@@ -6,6 +6,7 @@
 
 #define MON_SIZE 0x58
 #define PARTY_SIZE 100
+#define ITEM_SIZE 44 // struct Item: its name is the first 14 bytes
 
 static uint32_t r8(const struct Game* g, uint32_t a) { return g->core->busRead8(g->core, a); }
 static uint32_t r16(const struct Game* g, uint32_t a) { return g->core->busRead16(g->core, a); }
@@ -74,21 +75,33 @@ static void json_string(const char* s, char* out, size_t outSize) {
 	out[o] = 0;
 }
 
+// An item's name for JSON, "" for no item.
+static void item_json(const struct Game* g, uint32_t id, char* out, size_t outSize) {
+	char name[64];
+	if (id == 0) {
+		out[0] = 0;
+		return;
+	}
+	read_text(g, g->sym->items + ITEM_SIZE * id, 14, name, sizeof name);
+	json_string(name, out, outSize);
+}
+
 static size_t mon_json(const struct Game* g, int battler, char* out, size_t outSize) {
 	uint32_t m = g->sym->battleMons + MON_SIZE * battler;
 	uint32_t foe = g->sym->battleMons + MON_SIZE * (battler ^ 1);
 	if (r16(g, m) == 0) return (size_t) snprintf(out, outSize, "null");
-	char name[64], esc[96], typeA[16], typeB[16];
+	char name[64], esc[96], typeA[16], typeB[16], item[96];
 	read_text(g, m + 0x30, 11, name, sizeof name);
 	json_string(name, esc, sizeof esc);
+	item_json(g, r16(g, m + 0x2E), item, sizeof item);
 	int t1 = (int) r8(g, m + 0x21), t2 = (int) r8(g, m + 0x22);
 	int f1 = (int) r8(g, foe + 0x21), f2 = (int) r8(g, foe + 0x22);
 	read_text(g, g->sym->typeNames + 7 * t1, 7, typeA, sizeof typeA);
 	read_text(g, g->sym->typeNames + 7 * t2, 7, typeB, sizeof typeB);
 	size_t o = (size_t) snprintf(out, outSize,
-		"{\"species\":%u,\"name\":\"%s\",\"level\":%u,\"hp\":%u,\"maxHp\":%u,\"status\":\"%s\",\"confused\":%s,"
+		"{\"species\":%u,\"name\":\"%s\",\"item\":\"%s\",\"level\":%u,\"hp\":%u,\"maxHp\":%u,\"status\":\"%s\",\"confused\":%s,"
 		"\"types\":[\"%s\"%s%s%s],\"moves\":[",
-		r16(g, m), esc, r8(g, m + 0x2A), r16(g, m + 0x28), r16(g, m + 0x2C), status_badge(r32(g, m + 0x4C)),
+		r16(g, m), esc, item, r8(g, m + 0x2A), r16(g, m + 0x28), r16(g, m + 0x2C), status_badge(r32(g, m + 0x4C)),
 		(r32(g, m + 0x50) & 0x7) ? "true" : "false", typeA,
 		t2 != t1 ? ",\"" : "", t2 != t1 ? typeB : "", t2 != t1 ? "\"" : "");
 	int written = 0;
@@ -123,6 +136,7 @@ static uint32_t party_substruct(const struct Game* g, uint32_t p, char which, in
 }
 
 static uint32_t party_species(const struct Game* g, uint32_t p) { return party_substruct(g, p, 'G', 0) & 0xFFFF; }
+static uint32_t party_item(const struct Game* g, uint32_t p) { return party_substruct(g, p, 'G', 0) >> 16; }
 
 static uint32_t party_move(const struct Game* g, uint32_t p, int i) {
 	return (party_substruct(g, p, 'A', i / 2) >> (16 * (i % 2))) & 0xFFFF;
@@ -149,13 +163,14 @@ size_t game_state_json(const struct Game* g, char* out, size_t outSize) {
 	uint32_t active = r16(g, g->sym->battlerPartyIndexes);
 	for (int i = 0; i < count && i < 6; i++) {
 		uint32_t p = g->sym->playerParty + PARTY_SIZE * i;
-		char name[64], nameEsc[96];
+		char name[64], nameEsc[96], item[96];
 		read_text(g, p + 8, 10, name, sizeof name);
 		json_string(name, nameEsc, sizeof nameEsc);
+		item_json(g, party_item(g, p), item, sizeof item);
 		o += (size_t) snprintf(out + o, outSize - o,
-			"%s{\"slot\":%d,\"species\":%u,\"name\":\"%s\",\"level\":%u,\"hp\":%u,\"maxHp\":%u,\"active\":%s,"
+			"%s{\"slot\":%d,\"species\":%u,\"name\":\"%s\",\"item\":\"%s\",\"level\":%u,\"hp\":%u,\"maxHp\":%u,\"active\":%s,"
 			"\"status\":\"%s\",\"moves\":[%u,%u,%u,%u]}",
-			i ? "," : "", i + 1, party_species(g, p), nameEsc, r8(g, p + 84), r16(g, p + 86), r16(g, p + 88),
+			i ? "," : "", i + 1, party_species(g, p), nameEsc, item, r8(g, p + 84), r16(g, p + 86), r16(g, p + 88),
 			(uint32_t) i == active ? "true" : "false", status_badge(r32(g, p + 80)),
 			party_move(g, p, 0), party_move(g, p, 1), party_move(g, p, 2), party_move(g, p, 3));
 	}
