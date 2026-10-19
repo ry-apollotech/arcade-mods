@@ -19,6 +19,7 @@ export const ICON = {
   error: '✗',
   gate: '⚑',
   requests: '×',
+  reset: '→',
 } as const
 
 /** `2 skills · 1 agent` as `2◇ 1◈`; a noun with no glyph keeps its word. */
@@ -52,7 +53,7 @@ export const receiptIcons = (r: Receipt) =>
 
 export const LEGEND = [
   'Fueldeck icons',
-  `  ${ICON.context}  context window        ⟲  compactions        ↻  time to a rate-limit reset`,
+  `  ${ICON.context}  context window        ⟲  compactions        ${ICON.reset}  time to a rate-limit reset`,
   `  ${ICON.speed}  last request: time to first token · output tokens per second`,
   `  ${ICON.requests}  requests              ▮▮▯▯  effort`,
   `  ${ICON.tokens}  tokens this session    ${ICON.hit}  cache hit rate    ${ICON.input} ${ICON.output}  fresh input / output tokens`,
@@ -61,6 +62,7 @@ export const LEGEND = [
   `  ${ICON.gate}  permission checks: green allowed by a rule, blue cleared by the classifier or you,`,
   `     amber pending, ${ICON.error} denied; dim when inside a subagent`,
   `     (on one line above the prompt: ✓ allowed  ◆ cleared  … pending  ${ICON.error} denied)`,
+  '  f s o  checks by family: file, shell, other; press the letter to list them',
   `  ✓  last turn ended    ${ICON.edit}  edits    ${ICON.error}  errors    +$  cost the turn added`,
   '',
   'Counts that are zero are hidden. Set labels to "words" in /config for the labelled layout.',

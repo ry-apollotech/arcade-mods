@@ -445,7 +445,7 @@ test("a background architect's advice is read from its hand-back", async ($, on)
   await ui.unmount()
 })
 
-test('each rate-limit window shows the time to its reset where the main panel has room', async ($, on) => {
+test('each rate-limit window shows the time to its reset where the main panel has room', words, async ($, on) => {
   engine(on)
   on('session.measure', (_$, e) => ({ changed: e.changed }))
   const at = (ms: number) => new Date(ms).toISOString()

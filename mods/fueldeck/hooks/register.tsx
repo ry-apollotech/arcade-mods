@@ -711,7 +711,7 @@ export const register: Register = (on, options) => {
                   <Text dimColor>{`${limitLabel(l.kind)} `}</Text>
                   <Text color={l.pct >= 80 ? C.warn : C.main}>{lg.on}</Text>
                   <Text color={C.faint}>{lg.off}</Text>
-                  <Text dimColor>{` ${Math.round(l.pct)}%${resetIn ? ` ↻${resetIn}` : ''}  `}</Text>
+                  <Text dimColor>{` ${Math.round(l.pct)}%${resetIn ? ` ${icons ? ICON.reset : '↻'}${resetIn}` : ''}  `}</Text>
                 </Text>
               )
             })}
@@ -883,7 +883,8 @@ export const register: Register = (on, options) => {
                   key={`gate-${b}`}
                   plain
                   hotkey={b[0]}
-                  label={`${b} ${n}${open === b ? ' ▾' : ''}`}
+                  // The hotkey letter already names the family (f file, s shell, o other): icons keep just the count.
+                  label={`${icons ? n : `${b} ${n}`}${open === b ? ' ▾' : ''}`}
                   dimColor={n === 0}
                   onPress={() => update($, view, x => ({ ...normalize(DEFAULT_VIEW, x), gateOpen: normalize(DEFAULT_VIEW, x).gateOpen === b ? null : b }))}
                 />
@@ -1076,7 +1077,15 @@ export const register: Register = (on, options) => {
 
     // ---- log: whatever rows the other panels leave, 4 to 8
     // The main box's speed line and the gap above the log are a row each.
-    const used = 2 + 5 + (m.speed ? 1 : 0) + (panels.includes('fuel') ? fuelRows + 1 : 0) + 1 + (showArchitect ? 6 : 0) + 6 + (v.gateOpen ? 5 : 0) + (cards.length > cfg.maxCards ? 3 + Math.min(6, cards.length) : 8) + (expandedCard ? 8 : 0) + (lp.length ? 1 : 0) + 3
+    // Connectors between panels: the agents panel draws its own rails, and the log and loops take none.
+    const hasLink = (ps: Panel[], i: number) => {
+      const p = ps[i]
+      const prev = ps[i - 1]
+      return i > 0 && p !== 'agents' && prev !== 'agents' && p !== 'log' && p !== 'loops' && prev !== 'loops'
+    }
+    // Rows the hidden connectors give back to the log (the one column's; wide columns are no taller).
+    const freedRows = icons && !m.isRunning ? panels.filter((_, i) => hasLink(panels, i)).length : 0
+    const used = -freedRows + 2 + 5 + (m.speed ? 1 : 0) + (panels.includes('fuel') ? fuelRows + 1 : 0) + 1 + (showArchitect ? 6 : 0) + 6 + (v.gateOpen ? 5 : 0) + (cards.length > cfg.maxCards ? 3 + Math.min(6, cards.length) : 8) + (expandedCard ? 8 : 0) + (lp.length ? 1 : 0) + 3
     const bodyRows = e.props.scroll?.bodyRows ?? e.viewport?.rows ?? 40
     const nLog = logRows(bodyRows, used)
     const shownLines = (viewed ? lines.filter(l => l.agentId === viewed) : lines).slice(-nLog)
@@ -1125,11 +1134,9 @@ export const register: Register = (on, options) => {
     const column = (ps: Panel[], w: number) => (
       <Box flexDirection="column" width={w}>
         {ps.map((p, i) => {
-          const prev = ps[i - 1]
-          const link =
-            i === 0 || p === 'agents' || prev === 'agents' || p === 'log' || p === 'loops' || prev === 'loops'
-              ? null
-              : rail(`link-${p}`, p === 'architect' ? advising : m.isRunning, p === 'architect' ? C.arch : C.main, w)
+          const isActive = p === 'architect' ? advising : m.isRunning
+          // With icons, a connector shows only while work flows through it; idle, the boxes sit together.
+          const link = hasLink(ps, i) && (isActive || !icons) ? rail(`link-${p}`, isActive, p === 'architect' ? C.arch : C.main, w) : null
           return (
             <Box flexDirection="column">
               {link}
@@ -1239,8 +1246,9 @@ export const register: Register = (on, options) => {
       [
         { label: 'main', color: C.main },
         ...(panels.includes('fuel') ? [{ label: 'fuel', color: C.amber }] : []),
-        { label: 'agents', color: C.agent },
-        { label: cfg.gateLabel.toLowerCase(), color: C.gate },
+        // Only the panels on screen: an agents or gate entry with no panel to point at explains nothing.
+        ...(panels.includes('agents') ? [{ label: 'agents', color: C.agent }] : []),
+        ...(panels.includes('gate') ? [{ label: cfg.gateLabel.toLowerCase(), color: C.gate }] : []),
         ...(showArchitect ? [{ label: cfg.architectLabel.toLowerCase(), color: C.arch }] : []),
       ],
       W,

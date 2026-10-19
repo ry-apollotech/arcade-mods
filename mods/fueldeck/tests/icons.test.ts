@@ -81,6 +81,50 @@ test('the main box, gate and receipt drop their labels and their zeros', async (
   }
 })
 
+test('gate buttons keep just their counts, and the legend names only panels on screen', async ($, on) => {
+  engine(on)
+  const fresh = await $.ui.mount({ ...pane(80), surface: 'terminal' })
+  expect(await fresh.find({ text: /^ agents$/ })).toBeUndefined() // no agents, no gate yet
+  expect(await fresh.find({ text: /^ gate$/ })).toBeUndefined()
+  await fresh.unmount()
+  await $.tool.check({ tool: 'Read', input: { file_path: '/a' }, tool_use_id: 'b1' })
+  const ui = await $.ui.mount({ ...pane(80), surface: 'terminal' })
+  expect(await ui.find({ text: /^ gate$/ })).toBeDefined()
+  expect(await ui.find({ text: /^ agents$/ })).toBeUndefined()
+  expect((await ui.find({ key: 'gate-file' }))?.props.label).toBe('1')
+  expect((await ui.find({ key: 'gate-shell' }))?.props.label).toBe('0')
+  await ui.unmount()
+})
+
+test('a rate-limit reset reads as an arrow, not ↻', async ($, on) => {
+  engine(on)
+  on('session.measure', (_$, e) => ({ changed: e.changed }))
+  await $.session.measure({
+    context: { window: 200_000 },
+    rateLimits: [{ kind: 'five_hour', percentUsed: 19, resetsAt: new Date(3 * 3_600_000 + 10 * 60_000).toISOString() }],
+    changed: ['rateLimits'],
+  })
+  const ui = await $.ui.mount({ ...pane(80), surface: 'terminal' })
+  expect(await ui.find({ text: /19% →3h10m/ })).toBeDefined()
+  expect(await ui.find({ text: /↻/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('connectors between panels show only while work flows', async ($, on) => {
+  engine(on)
+  await $.tool.check({ tool: 'Read', input: { file_path: '/a' }, tool_use_id: 'c1' })
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const idle = await $.ui.mount({ ...pane(80), surface })
+    expect(await idle.find({ key: 'link-gate' })).toBeUndefined()
+    expect(await idle.find({ text: /^─+$/ })).toBeUndefined()
+    await idle.unmount()
+  }
+  await $.turn.start({ text: 'go', turnId: 'L1' })
+  const busy = await $.ui.mount({ ...pane(80), surface: 'terminal' })
+  expect(await busy.find({ key: 'link-gate' })).toBeDefined()
+  await busy.unmount()
+})
+
 test('the one-line layout above the prompt uses the same glyphs', async ($, on) => {
   engine(on)
   await $.tool.check({ tool: 'Read', input: { file_path: '/a' }, tool_use_id: 'm1' })
