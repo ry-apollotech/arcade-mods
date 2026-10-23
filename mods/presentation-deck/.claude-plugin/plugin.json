@@ -1,0 +1,12 @@
+{
+  "name": "presentation-deck",
+  "version": "0.1.0",
+  "description": "Build themed 16:9 PowerPoint decks from a JSON outline: title and closing slides, cards, grids, steps, flows, stats, status columns, timelines, framed screenshots and speaker notes",
+  "author": {
+    "name": "Ryan"
+  },
+  "homepage": "https://github.com/ry-apollotech/arcade-mods",
+  "repository": "https://github.com/ry-apollotech/arcade-mods",
+  "license": "MIT",
+  "keywords": ["claude-code", "claude-code-plugin", "skill", "pptx", "powerpoint", "slides", "presentation"]
+}

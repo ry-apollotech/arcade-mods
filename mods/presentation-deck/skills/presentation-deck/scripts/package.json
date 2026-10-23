@@ -1,0 +1,15 @@
+{
+  "name": "presentation-deck-scripts",
+  "private": true,
+  "description": "Builds a .pptx deck from a JSON outline",
+  "scripts": {
+    "test": "node --test ../../../tests/"
+  },
+  "dependencies": {
+    "pptxgenjs": "3.12.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-icons": "5.4.0",
+    "sharp": "0.33.5"
+  }
+}

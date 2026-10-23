@@ -1,0 +1,131 @@
+{
+  "title": "Product Overview",
+  "author": "Your team",
+  "footer": "Product Overview",
+  "theme": { "font": "Calibri" },
+  "sections": [
+    {
+      "title": "Why",
+      "slides": [
+        {
+          "type": "title",
+          "title": "Product Overview",
+          "subtitle": "One line on what it does and who it is for",
+          "image": "images/screen-list.png",
+          "notes": "Open with the promise in one sentence, then say what the deck covers."
+        },
+        {
+          "type": "cards",
+          "title": "The problem we solve",
+          "items": [
+            { "icon": "MdWifiOff", "heading": "First pain", "text": "What goes wrong today, in the audience's words." },
+            { "icon": "MdDevices", "heading": "Second pain", "text": "The cost of it: time, money or mistakes." },
+            { "icon": "MdSyncProblem", "heading": "Third pain", "text": "Why the usual fixes fall short." }
+          ],
+          "notes": "Name the pain before the product."
+        },
+        {
+          "type": "grid",
+          "title": "Our approach in four parts",
+          "image": "images/screen-detail.png",
+          "items": [
+            { "icon": "MdBolt", "heading": "Fast", "text": "The everyday task in a few taps" },
+            { "icon": "MdPayments", "heading": "Complete", "text": "Everything in one place" },
+            { "icon": "MdCloudOff", "heading": "Reliable", "text": "Keeps working when the network drops" },
+            { "icon": "MdHub", "heading": "Managed", "text": "Set once centrally, followed everywhere" }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "How it works",
+      "slides": [
+        {
+          "type": "image-bullets",
+          "title": "The main workflow",
+          "image": "images/screen-list.png",
+          "bullets": ["First thing the user does", "What happens next", "How they fix a mistake", "How they finish"]
+        },
+        {
+          "type": "two-images",
+          "title": "Two screens side by side",
+          "images": [
+            { "file": "images/screen-list.png", "caption": "The list view" },
+            { "file": "images/screen-detail.png", "caption": "The detail view" }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Three steps",
+          "image": "images/screen-detail.png",
+          "steps": [
+            { "heading": "Find", "text": "Look up what you need" },
+            { "heading": "Check", "text": "Confirm the details before you commit" },
+            { "heading": "Finish", "text": "Complete it; everything else is automatic" }
+          ]
+        },
+        {
+          "type": "icon-list",
+          "title": "Controls that matter",
+          "image": "images/screen-list.png",
+          "items": [
+            { "icon": "MdBadge", "heading": "Sign in", "text": "Each person has their own login" },
+            { "icon": "MdAdminPanelSettings", "heading": "Approvals", "text": "Sensitive actions need a manager" },
+            { "icon": "MdSchool", "heading": "Practice mode", "text": "Learn without touching real data" },
+            { "icon": "MdLock", "heading": "Audit trail", "text": "Every action records who did it" }
+          ]
+        },
+        {
+          "type": "flow",
+          "title": "Change it once, everyone follows",
+          "items": [
+            { "icon": "MdStorage", "heading": "Central portal", "text": "The single source of truth" },
+            { "icon": "MdUploadFile", "heading": "Edit or import", "text": "On screen or from a spreadsheet" },
+            { "icon": "MdSync", "heading": "Automatic sync", "text": "Devices pick up changes on their own" },
+            { "icon": "MdTabletAndroid", "heading": "Every device", "text": "The same data everywhere" }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Proof and plan",
+      "slides": [
+        {
+          "type": "stats",
+          "title": "Built for real conditions",
+          "items": [
+            { "value": "Offline", "text": "Keeps working without a connection" },
+            { "value": "~1 sec", "text": "Catches up after the network returns" },
+            { "value": "0", "text": "Duplicates, by design" }
+          ]
+        },
+        {
+          "type": "columns",
+          "title": "Where things stand",
+          "columns": [
+            { "label": "Live now", "bullets": ["Feature one", "Feature two"] },
+            { "label": "In testing", "bullets": ["Feature three", "Feature four"] },
+            { "label": "Planned", "bullets": ["Feature five", "Feature six"] }
+          ],
+          "notes": "Be precise about status; don't promise planned items as live."
+        },
+        {
+          "type": "timeline",
+          "title": "From sign-up to live",
+          "items": [
+            { "heading": "Set up", "text": "We prepare your data" },
+            { "heading": "Install", "text": "Devices are installed and connected" },
+            { "heading": "Test", "text": "A full run-through together" },
+            { "heading": "Go live", "text": "Real work, end to end" }
+          ]
+        },
+        {
+          "type": "closing",
+          "title": "Next step",
+          "subtitle": "One clear action: book a demo, pick a pilot, agree a date",
+          "image": "images/screen-detail.png"
+        }
+      ]
+    }
+  ]
+}

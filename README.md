@@ -8,6 +8,7 @@ A collection of Claude Code mods (Claude Code 2.1.287+).
 | [flightdeck](mods/flightdeck) | [Stephen Casella](https://github.com/scasella) — vendored, MIT ([upstream](https://github.com/scasella/claude-flightdeck)) | Live agent dashboard: context and cost, permission checks, subagent cards and swimlanes |
 | [fueldeck](mods/fueldeck) | Ryan, based on Flightdeck by [Stephen Casella](https://github.com/scasella) (MIT) | Flightdeck plus a fuel panel: session tokens by loop and model, cache hits, and what each plugin, skill and MCP server costs in context |
 | [dailyred-dash](mods/dailyred-dash) | Ryan | Daily Red (by amoi-builds) battles in a pane, on the real FireRed engine |
+| [presentation-deck](mods/presentation-deck) | Ryan | A skill that builds themed PowerPoint decks from a JSON outline: cards, steps, flows, stats, timelines, framed screenshots and speaker notes |
 
 Third-party mods are included unmodified with their original license; see each folder's `LICENSE` and `VENDORED.md`.
 
@@ -21,6 +22,7 @@ Add the collection once, then install the mods you want:
 /plugin install flightdeck@arcade-mods
 /plugin install fueldeck@arcade-mods
 /plugin install dailyred-dash@arcade-mods
+/plugin install presentation-deck@arcade-mods
 /reload-plugins
 ```
 
