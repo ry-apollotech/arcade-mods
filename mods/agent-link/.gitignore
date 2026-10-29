@@ -1,0 +1,5 @@
+.env
+.venv/
+inbox/
+outbox/
+.pytest_cache/

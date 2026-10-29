@@ -1,0 +1,12 @@
+{
+  "name": "agent-link",
+  "version": "0.1.0",
+  "description": "Private LAN link between two Claude Code users: send Markdown tasks to a peer over a shared-token HTTP gateway; the peer's Claude reviews them automatically (no tools) or leaves them in an inbox for a human-driven collab session",
+  "author": {
+    "name": "Ryan"
+  },
+  "homepage": "https://github.com/ry-apollotech/arcade-mods",
+  "repository": "https://github.com/ry-apollotech/arcade-mods",
+  "license": "MIT",
+  "keywords": ["claude-code", "claude-code-plugin", "skill", "multi-agent", "collaboration", "lan", "review"]
+}

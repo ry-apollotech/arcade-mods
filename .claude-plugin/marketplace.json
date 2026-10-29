@@ -7,6 +7,7 @@
     { "name": "flightdeck", "source": "./mods/flightdeck", "description": "Live agent dashboard by Stephen Casella (vendored, MIT). Upstream: https://github.com/scasella/claude-flightdeck" },
     { "name": "fueldeck", "source": "./mods/fueldeck", "description": "Flightdeck plus a fuel panel: session tokens by loop and model, cache hits, and what each plugin, skill and MCP server costs in context" },
     { "name": "dailyred-dash", "source": "./mods/dailyred-dash", "description": "Daily Red in a pane: battle RED with today's team on the real FireRed engine (builds the game locally; see its README)" },
-    { "name": "presentation-deck", "source": "./mods/presentation-deck", "description": "Build themed 16:9 PowerPoint decks from a JSON outline: cards, steps, flows, stats, timelines, framed screenshots and speaker notes" }
+    { "name": "presentation-deck", "source": "./mods/presentation-deck", "description": "Build themed 16:9 PowerPoint decks from a JSON outline: cards, steps, flows, stats, timelines, framed screenshots and speaker notes" },
+    { "name": "agent-link", "source": "./mods/agent-link", "description": "Send Markdown tasks to a partner's Claude Code over your LAN (shared-token HTTP); their Claude auto-reviews with no tools, or holds it in an inbox for a collab session" }
   ]
 }
